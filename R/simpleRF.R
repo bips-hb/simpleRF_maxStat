@@ -111,7 +111,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     ordered.idx <- sapply(model.data[, -1], is.ordered)
     factor.idx <- sapply(model.data[, -1], is.factor)
     recode.idx <- character.idx | (factor.idx & !ordered.idx)
-    model.data[, -1][, recode.idx] <- lapply(model.data[, -1][, recode.idx], as.ordered)
+    model.data[, -1][, recode.idx] <- lapply(model.data[, -1][, recode.idx, drop=FALSE], as.ordered)
     
     ## Save levels
     covariate_levels <- lapply(model.data[, -1], levels)
