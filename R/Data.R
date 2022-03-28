@@ -4,10 +4,14 @@
 ##' Allows to access a \code{data.frame} by reference.
 Data <- setRefClass("Data", 
   fields = list(
-    data = "data.frame", 
+    data = "data.frame",
+    glmdata = "data.frame",
+    glmformula = "formula",
     ncol = "integer", 
     nrow = "integer",
-    names = "character"),  
+    nconf = "integer",
+    names = "character",
+    confounders = "character"),  
   methods = list(
     
     initialize = function(...) {
