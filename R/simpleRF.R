@@ -45,7 +45,30 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                      splitrule = NULL, unordered_factors = "ignore", 
                      num_threads = 1) {
   
-  model.data <- model.frame(formula, data)
+  #distinguish between RF with and without confounders
+  if (grepl("|", attr(terms(formula), "term.labels"), fixed = TRUE)){
+    #formula includes confounders (indicated by | on the right side of the formula)
+    response <- attr(terms(formula), "variables")[[2]]
+    confounders <- as.character(attr(terms(formula), "variables")[[3]])[2]
+    predictors <- as.character(attr(terms(formula), "variables")[[3]])[3]
+    glmformula <- as.formula(paste(response, confounders, sep=" ~ "))
+    #glmformula is needed as an extra component of the data object to fit the glm at each split
+    #otherwise it is not possible to consider interactions
+    glm.data <- model.frame(glmformula, data)
+    model.data <- model.frame(as.formula(paste(response, predictors, sep=" ~ ")), data)
+    if (predictors == "."){
+      #default: if no splitting variables are specified then confounders (main effects) are not
+      #considered as splitting variables
+      mainconf <- attr(terms(glmformula), "term.labels")[which(attr(terms(glmformula), "order")==1)]
+      model.data <- model.data[,-which(colnames(model.data) %in% mainconf)]
+    }
+    
+  } else {
+    #formula does not include confounders
+    model.data <- model.frame(formula, data)
+    glmformula <- NULL
+    glm.data <- NULL
+  }
   
   if (class(model.data[, 1]) == "factor") {
     if (probability) {
@@ -122,7 +145,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     forest <- ForestClassification$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
                                        min_node_size = as.integer(min_node_size), 
                                        replace = replace, splitrule = splitrule,
-                                       data = Data$new(data = model.data), 
+                                       data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                        formula = formula, unordered_factors = unordered_factors, 
                                        covariate_levels = covariate_levels,
                                        response_levels = levels(model.data[, 1]))
@@ -130,7 +153,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     forest <- ForestProbability$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
                                    min_node_size = as.integer(min_node_size), 
                                    replace = replace, splitrule = splitrule,
-                                   data = Data$new(data = model.data), 
+                                   data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                    formula = formula, unordered_factors = unordered_factors,
                                    covariate_levels = covariate_levels,
                                    response_levels = levels(model.data[, 1]))
@@ -138,7 +161,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     forest <- ForestRegression$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
                                    min_node_size = as.integer(min_node_size), 
                                    replace = replace, splitrule = splitrule,
-                                   data = Data$new(data = model.data), 
+                                   data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                    formula = formula, unordered_factors = unordered_factors, 
                                    covariate_levels = covariate_levels)
   } else if (treetype == "Survival") {
@@ -147,7 +170,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     forest <- ForestSurvival$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
                                  min_node_size = as.integer(min_node_size), 
                                  replace = replace, splitrule = splitrule,
-                                 data = Data$new(data = model.data), 
+                                 data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                  formula = formula, unordered_factors = unordered_factors, 
                                  covariate_levels = covariate_levels,
                                  timepoints = timepoints)
