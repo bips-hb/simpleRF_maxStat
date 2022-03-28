@@ -29,5 +29,15 @@ Data <- setRefClass("Data",
     
     subset = function(row, col) {
       return(data[row, col])
+    },
+  
+    glmcolumn = function(col) {
+      return(glmdata[, col])   
+    }, 
+  
+    glmsubset = function(row, col) {
+     return(glmdata[row, col])
     })
+  
+  
 )
