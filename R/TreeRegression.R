@@ -30,8 +30,9 @@ TreeRegression <- setRefClass("TreeRegression",
       best_split$varID <- -1
       best_split$value <- -1
       
-      ## Get response
+      ## Get response & glmdata
       response <- data$subset(sampleIDs[[nodeID]], 1)
+      glmdata <- data$glmsubset(sampleIDs[[nodeID]],)
       
       ## For all possible variables
       for (i in 1:length(possible_split_varIDs)) {
@@ -64,7 +65,7 @@ TreeRegression <- setRefClass("TreeRegression",
             split_levels_left[[nodeID]] <<- best_split$values_left
           }
         } else {
-          best_split = findBestSplitValueOrdered(split_varID, data_values, best_split, response)
+          best_split = findBestSplitValueOrdered(split_varID, data_values, best_split, response, glmdata)
           
           ## Set split levels left (empty if ordered splitting)
           if (unordered_factors == "order_split") {
