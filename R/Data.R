@@ -17,7 +17,7 @@ Data <- setRefClass("Data",
     initialize = function(...) {
       callSuper(...)
       ncol <<- ncol(data)
-      nconf <<- ncol(glmdata)-1
+      nconf <<- as.integer(ncol(glmdata)-1)
       nrow <<- nrow(data)
       names <<- colnames(data)
       confounders <<- colnames(glmdata)[-1]
