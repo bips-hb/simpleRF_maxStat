@@ -30,9 +30,14 @@ TreeRegression <- setRefClass("TreeRegression",
       best_split$varID <- -1
       best_split$value <- -1
       
-      ## Get response & glmdata
+      ## Get response
       response <- data$subset(sampleIDs[[nodeID]], 1)
-      glmdata <- data$glmsubset(sampleIDs[[nodeID]],)
+      
+      ## Fit lm to the parent node & obtain fitted values
+      fitted <- NULL
+      if (splitrule == "GLM") {
+        fitted <- lm(data$glmformula, data$glmsubset(sampleIDs[[nodeID]],))$fitted.values
+      }
       
       ## For all possible variables
       for (i in 1:length(possible_split_varIDs)) {
@@ -58,14 +63,14 @@ TreeRegression <- setRefClass("TreeRegression",
         
         ## If still not ordered, use partition splitting
         if (!is.numeric(data_values) & !is.ordered(data_values)) {
-          best_split = findBestSplitValuePartition(split_varID, data_values, best_split, response)
+          best_split = findBestSplitValuePartition(split_varID, data_values, best_split, response, fitted)
           
           ## Set split levels left
           if (best_split$varID == split_varID) {
             split_levels_left[[nodeID]] <<- best_split$values_left
           }
         } else {
-          best_split = findBestSplitValueOrdered(split_varID, data_values, best_split, response, glmdata)
+          best_split = findBestSplitValueOrdered(split_varID, data_values, best_split, response, fitted)
           
           ## Set split levels left (empty if ordered splitting)
           if (unordered_factors == "order_split") {
@@ -101,16 +106,18 @@ TreeRegression <- setRefClass("TreeRegression",
       }      
     }, 
     
-    findBestSplitValueOrdered = function(split_varID, data_values, best_split, response) {
+    findBestSplitValueOrdered = function(split_varID, data_values, best_split, response, fitted) {
       ## For all possible splits
       possible_split_values <- unique(data_values)
       for (j in 1:length(possible_split_values)) {
         split_value <- possible_split_values[j]
 
-        ## Sum responses in childs
+        ## Sum responses & fitted values in childs
         idx <- data_values <= split_value
         response_left <- response[idx]
         response_right <- response[!idx]
+        fitted_left <- fitted[idx]
+        fitted_right <- fitted[!idx]
         
         ## Skip if one child empty
         if (length(response_left) == 0 | length(response_right) == 0) {
@@ -121,6 +128,10 @@ TreeRegression <- setRefClass("TreeRegression",
           ## Decrease of impurity
           decrease <- sum(response_left)^2/length(response_left) + 
             sum(response_right)^2/length(response_right)
+        } else if (splitrule == "GLM") { 
+          ## Decrease of impurity
+          decrease <- sum(fitted_left)^2/length(fitted_left) + 
+            sum(fitted_right)^2/length(fitted_right)
         } else {
           stop("Unknown splitrule.")
         }
@@ -135,7 +146,7 @@ TreeRegression <- setRefClass("TreeRegression",
       return(best_split)
     },
     
-    findBestSplitValuePartition = function(split_varID, data_values, best_split, response) {
+    findBestSplitValuePartition = function(split_varID, data_values, best_split, response, fitted) {
       ## For all possible splits
       possible_split_values <- sort(unique(data_values))
 
@@ -146,10 +157,12 @@ TreeRegression <- setRefClass("TreeRegression",
         left_idx <- as.bitvect(j, length = length(possible_split_values))
         values_left <- possible_split_values[left_idx]
         
-        ## Sum responses in childs
+        ## Sum responses & fitted values in childs
         idx <- data_values %in% values_left
         response_left <- response[idx]
         response_right <- response[!idx]
+        fitted_left <- fitted[idx]
+        fitted_right <- fitted[!idx]
         
         ## Skip if one child empty
         if (length(response_left) == 0 | length(response_right) == 0) {
@@ -160,6 +173,10 @@ TreeRegression <- setRefClass("TreeRegression",
           ## Decrease of impurity
           decrease <- sum(response_left)^2/length(response_left) + 
             sum(response_right)^2/length(response_right)
+        } else if (splitrule == "GLM") { 
+          ## Decrease of impurity
+          decrease <- sum(fitted_left)^2/length(fitted_left) + 
+            sum(fitted_right)^2/length(fitted_right)
         } else {
           stop("Unknown splitrule.")
         }
