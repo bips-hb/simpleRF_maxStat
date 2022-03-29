@@ -54,8 +54,9 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     glmformula <- as.formula(paste(response, confounders, sep=" ~ "))
     #glmformula is needed as an extra component of the data object to fit the glm at each split
     #otherwise it is not possible to consider interactions
+    splitformula <- as.formula(paste(response, predictors, sep=" ~ "))
     glm.data <- model.frame(glmformula, data)
-    model.data <- model.frame(as.formula(paste(response, predictors, sep=" ~ ")), data)
+    model.data <- model.frame(splitformula, data)
     if (predictors == "."){
       #default: if no splitting variables are specified then confounders (main effects) are not
       #considered as splitting variables
@@ -65,7 +66,8 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     
   } else {
     #formula does not include confounders
-    model.data <- model.frame(formula, data)
+    splitformula <- formula
+    model.data <- model.frame(splitformula, data)
     glmformula <- NULL
     glm.data <- NULL
   }
@@ -146,7 +148,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                                        min_node_size = as.integer(min_node_size), 
                                        replace = replace, splitrule = splitrule,
                                        data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
-                                       formula = formula, unordered_factors = unordered_factors, 
+                                       formula = splitformula, unordered_factors = unordered_factors, 
                                        covariate_levels = covariate_levels,
                                        response_levels = levels(model.data[, 1]))
   } else if (treetype == "Probability") {
@@ -154,7 +156,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                                    min_node_size = as.integer(min_node_size), 
                                    replace = replace, splitrule = splitrule,
                                    data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
-                                   formula = formula, unordered_factors = unordered_factors,
+                                   formula = splitformula, unordered_factors = unordered_factors,
                                    covariate_levels = covariate_levels,
                                    response_levels = levels(model.data[, 1]))
   } else if (treetype == "Regression") {
@@ -162,7 +164,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                                    min_node_size = as.integer(min_node_size), 
                                    replace = replace, splitrule = splitrule,
                                    data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
-                                   formula = formula, unordered_factors = unordered_factors, 
+                                   formula = splitformula, unordered_factors = unordered_factors, 
                                    covariate_levels = covariate_levels)
   } else if (treetype == "Survival") {
     idx.death <- model.data[, 1][, 2] == 1
@@ -171,7 +173,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                                  min_node_size = as.integer(min_node_size), 
                                  replace = replace, splitrule = splitrule,
                                  data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
-                                 formula = formula, unordered_factors = unordered_factors, 
+                                 formula = splitformula, unordered_factors = unordered_factors, 
                                  covariate_levels = covariate_levels,
                                  timepoints = timepoints)
   } else {
