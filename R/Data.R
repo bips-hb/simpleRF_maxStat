@@ -36,7 +36,7 @@ Data <- setRefClass("Data",
     }, 
   
     glmsubset = function(row, col) {
-     return(glmdata[row, col])
+     return(glmdata[row, col, drop=FALSE])
     })
   
   

@@ -68,8 +68,10 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     #formula does not include confounders
     splitformula <- formula
     model.data <- model.frame(splitformula, data)
-    glmformula <- as.formula(NULL)
-    glm.data <- as.data.frame(NULL)
+    #glmformula <- as.formula(NULL)
+    #glm.data <- as.data.frame(NULL)
+    glmformula <- as.formula(paste(as.character(attr(terms(formula), "variables"))[[2]][1], "1", sep=" ~ "))
+    glm.data <- model.frame(glmformula, data)
   }
   
   if (class(model.data[, 1]) == "factor") {
