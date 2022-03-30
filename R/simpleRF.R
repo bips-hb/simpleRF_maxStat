@@ -46,7 +46,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                      num_threads = 1) {
   
   #distinguish between RF with and without confounders
-  if (grepl("|", attr(terms(formula), "term.labels"), fixed = TRUE)){
+  if (grepl("|", deparse1(formula), fixed = TRUE)){
     #formula includes confounders (indicated by | on the right side of the formula)
     response <- attr(terms(formula), "variables")[[2]]
     confounders <- as.character(attr(terms(formula), "variables")[[3]])[2]
@@ -68,8 +68,8 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     #formula does not include confounders
     splitformula <- formula
     model.data <- model.frame(splitformula, data)
-    glmformula <- NULL
-    glm.data <- NULL
+    glmformula <- as.formula(NULL)
+    glm.data <- as.data.frame(NULL)
   }
   
   if (class(model.data[, 1]) == "factor") {
