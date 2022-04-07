@@ -33,8 +33,8 @@ TreeRegression <- setRefClass("TreeRegression",
       ## Get response
       response <- data$subset(sampleIDs[[nodeID]], 1)
       
-      ## Fit lm to the parent node & obtain fitted values
-      fitted <- NULL
+      ## Fit lm to the parent node & obtain residuals
+      resid <- NULL
       if (splitrule == "GLM") {
         #GLM can only be fitted for factor/ character predictors with more than one class in the node
         #test if glm includes factor/ character predictors & exclude factor/ character predictors with
@@ -43,21 +43,21 @@ TreeRegression <- setRefClass("TreeRegression",
         glmsubset <- data$glmsubset(sampleIDs[[nodeID]],)
         if (length(char_fact_ind)==0){
           #no characters or factors included in the formula
-          fitted <- lm(data$glmformula, glmsubset)$fitted.values
+          resid <- lm(data$glmformula, glmsubset)$residuals
         } else{
           #formula includes characters or factors
           nunique <- sapply(glmsubset[,char_fact_ind, drop=FALSE], function(x){length(unique(x))})
           singleclass <- colnames(glmsubset)[char_fact_ind[which(nunique==1)]]
           if (length(singleclass)==0){
             #no need for changes, model can be fitted as usual
-            fitted <- lm(data$glmformula, glmsubset)$fitted.values
+            resid <- lm(data$glmformula, glmsubset)$residuals
           } else{
             #factors/ characters with only one level must be excluded from glm
             #this also holds for interactions including them
             confounders_mod <- attr(terms(data$glmdata), "term.labels")[which(!grepl(singleclass, attr(terms(data$glmdata), "term.labels"),fixed=TRUE))]
             response <- as.character(attr(terms(data$glmdata), "variables"))[[2]][1]
             glmformula_mod <- as.formula(paste(response, paste(confounders_mod, collapse =" + "), sep=" ~ "))
-            fitted <- lm(glmformula_mod, glmsubset)$fitted.values
+            resid <- lm(glmformula_mod, glmsubset)$residuals
           }
         }
       }
@@ -86,14 +86,14 @@ TreeRegression <- setRefClass("TreeRegression",
         
         ## If still not ordered, use partition splitting
         if (!is.numeric(data_values) & !is.ordered(data_values)) {
-          best_split = findBestSplitValuePartition(split_varID, data_values, best_split, response, fitted)
+          best_split = findBestSplitValuePartition(split_varID, data_values, best_split, response, resid)
           
           ## Set split levels left
           if (best_split$varID == split_varID) {
             split_levels_left[[nodeID]] <<- best_split$values_left
           }
         } else {
-          best_split = findBestSplitValueOrdered(split_varID, data_values, best_split, response, fitted)
+          best_split = findBestSplitValueOrdered(split_varID, data_values, best_split, response, resid)
           
           ## Set split levels left (empty if ordered splitting)
           if (unordered_factors == "order_split") {
@@ -129,18 +129,18 @@ TreeRegression <- setRefClass("TreeRegression",
       }      
     }, 
     
-    findBestSplitValueOrdered = function(split_varID, data_values, best_split, response, fitted) {
+    findBestSplitValueOrdered = function(split_varID, data_values, best_split, response, resid) {
       ## For all possible splits
       possible_split_values <- unique(data_values)
       for (j in 1:length(possible_split_values)) {
         split_value <- possible_split_values[j]
 
-        ## Sum responses & fitted values in childs
+        ## Sum responses & residuals in childs
         idx <- data_values <= split_value
         response_left <- response[idx]
         response_right <- response[!idx]
-        fitted_left <- fitted[idx]
-        fitted_right <- fitted[!idx]
+        resid_left <- resid[idx]
+        resid_right <- resid[!idx]
         
         ## Skip if one child empty
         if (length(response_left) == 0 | length(response_right) == 0) {
@@ -153,8 +153,8 @@ TreeRegression <- setRefClass("TreeRegression",
             sum(response_right)^2/length(response_right)
         } else if (splitrule == "GLM") { 
           ## Decrease of impurity
-          decrease <- sum(fitted_left)^2/length(fitted_left) + 
-            sum(fitted_right)^2/length(fitted_right)
+          decrease <- sum(resid_left)^2/length(resid_left) + 
+            sum(resid_right)^2/length(resid_right)
         } else {
           stop("Unknown splitrule.")
         }
@@ -169,7 +169,7 @@ TreeRegression <- setRefClass("TreeRegression",
       return(best_split)
     },
     
-    findBestSplitValuePartition = function(split_varID, data_values, best_split, response, fitted) {
+    findBestSplitValuePartition = function(split_varID, data_values, best_split, response, resid) {
       ## For all possible splits
       possible_split_values <- sort(unique(data_values))
 
@@ -180,12 +180,12 @@ TreeRegression <- setRefClass("TreeRegression",
         left_idx <- as.bitvect(j, length = length(possible_split_values))
         values_left <- possible_split_values[left_idx]
         
-        ## Sum responses & fitted values in childs
+        ## Sum responses & residuals in childs
         idx <- data_values %in% values_left
         response_left <- response[idx]
         response_right <- response[!idx]
-        fitted_left <- fitted[idx]
-        fitted_right <- fitted[!idx]
+        resid_left <- resid[idx]
+        resid_right <- resid[!idx]
         
         ## Skip if one child empty
         if (length(response_left) == 0 | length(response_right) == 0) {
@@ -198,8 +198,8 @@ TreeRegression <- setRefClass("TreeRegression",
             sum(response_right)^2/length(response_right)
         } else if (splitrule == "GLM") { 
           ## Decrease of impurity
-          decrease <- sum(fitted_left)^2/length(fitted_left) + 
-            sum(fitted_right)^2/length(fitted_right)
+          decrease <- sum(resid_left)^2/length(resid_left) + 
+            sum(resid_right)^2/length(resid_right)
         } else {
           stop("Unknown splitrule.")
         }
