@@ -35,7 +35,7 @@ TreeRegression <- setRefClass("TreeRegression",
       
       ## Fit lm to the parent node & obtain residuals
       resid <- NULL
-      if (splitrule == "GLM") {
+      if (splitrule == "Residuals") {
         #GLM can only be fitted for factor/ character predictors with more than one class in the node
         #test if glm includes factor/ character predictors & exclude factor/ character predictors with
         #only a single class in the node
@@ -151,7 +151,7 @@ TreeRegression <- setRefClass("TreeRegression",
           ## Decrease of impurity
           decrease <- sum(response_left)^2/length(response_left) + 
             sum(response_right)^2/length(response_right)
-        } else if (splitrule == "GLM") { 
+        } else if (splitrule == "Residuals") { 
           ## Decrease of impurity
           decrease <- sum(resid_left)^2/length(resid_left) + 
             sum(resid_right)^2/length(resid_right)
@@ -196,7 +196,7 @@ TreeRegression <- setRefClass("TreeRegression",
           ## Decrease of impurity
           decrease <- sum(response_left)^2/length(response_left) + 
             sum(response_right)^2/length(response_right)
-        } else if (splitrule == "GLM") { 
+        } else if (splitrule == "Residuals") { 
           ## Decrease of impurity
           decrease <- sum(resid_left)^2/length(resid_left) + 
             sum(resid_right)^2/length(resid_right)
