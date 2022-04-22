@@ -18,6 +18,7 @@
 ##' @param probability Grow a probability forest. Default FALSE.
 ##' @param splitrule Splitrule to use in trees. Default "Gini" for classification and probability forests, "Variance" for regression forests and "Logrank" for survival forests.
 ##' @param unordered_factors How to handle unordered factor variables. One of "ignore", "order_once", "order_split" and "partition" with default "ignore".
+##' @param glmleaf Fit glm to leaves. Default FALSE.
 ##' @param num_threads Number of threads used for mclapply, set to 1 for debugging.
 ##' @examples 
 ##' \donttest{
@@ -43,7 +44,7 @@
 simpleRF <- function(formula, data, num_trees = 50, mtry = NULL, 
                      min_node_size = NULL, replace = TRUE, probability = FALSE, 
                      splitrule = NULL, unordered_factors = "ignore", 
-                     num_threads = 1) {
+                     glmleaf = FALSE, num_threads = 1) {
   
   #distinguish between RF with and without confounders
   if (grepl("|", deparse1(formula), fixed = TRUE)){
@@ -119,6 +120,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     }
   }
   
+  
   ## Unordered factors
   if (!(unordered_factors %in% c("ignore", "order_once", "order_split", "partition"))) {
     stop("Unknown value for unordered_factors.")
@@ -148,7 +150,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
   if (treetype == "Classification") {
     forest <- ForestClassification$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
                                        min_node_size = as.integer(min_node_size), 
-                                       replace = replace, splitrule = splitrule,
+                                       replace = replace, splitrule = splitrule, glmleaf=glmleaf,
                                        data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                        formula = splitformula, unordered_factors = unordered_factors, 
                                        covariate_levels = covariate_levels,
@@ -156,7 +158,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
   } else if (treetype == "Probability") {
     forest <- ForestProbability$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
                                    min_node_size = as.integer(min_node_size), 
-                                   replace = replace, splitrule = splitrule,
+                                   replace = replace, splitrule = splitrule, glmleaf=glmleaf,
                                    data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                    formula = splitformula, unordered_factors = unordered_factors,
                                    covariate_levels = covariate_levels,
@@ -164,7 +166,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
   } else if (treetype == "Regression") {
     forest <- ForestRegression$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
                                    min_node_size = as.integer(min_node_size), 
-                                   replace = replace, splitrule = splitrule,
+                                   replace = replace, splitrule = splitrule, glmleaf=glmleaf,
                                    data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                    formula = splitformula, unordered_factors = unordered_factors, 
                                    covariate_levels = covariate_levels)
@@ -173,7 +175,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     timepoints <- sort(unique(model.data[idx.death, 1][, 1]))
     forest <- ForestSurvival$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
                                  min_node_size = as.integer(min_node_size), 
-                                 replace = replace, splitrule = splitrule,
+                                 replace = replace, splitrule = splitrule, glmleaf=glmleaf,
                                  data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                  formula = splitformula, unordered_factors = unordered_factors, 
                                  covariate_levels = covariate_levels,

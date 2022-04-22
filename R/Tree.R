@@ -14,7 +14,9 @@ Tree <- setRefClass("Tree",
     child_nodeIDs = "list",      
     split_varIDs = "integer",    
     split_values = "numeric", 
-    split_levels_left = "list"),  
+    split_levels_left = "list",
+    glmleaf = "logical",
+    leaf_glm = "list"),  
   methods = list(
     
     grow = function(replace) {   
@@ -46,6 +48,9 @@ Tree <- setRefClass("Tree",
         ## Assign split
         split_varIDs[[nodeID]] <<- split$varID
         split_values[[nodeID]] <<- split$value
+        if (glmleaf){
+          leaf_glm[[nodeID]] <<- NA
+        }
       
         ## Create child nodes
         left_child <- length(sampleIDs) + 1
@@ -67,9 +72,15 @@ Tree <- setRefClass("Tree",
         splitNode(left_child)
         splitNode(right_child)
       } else {
-        ## Compute estimate for terminal node
-        split_values[[nodeID]] <<- estimate(nodeID)
-        split_varIDs[[nodeID]] <<- NA
+        ## Compute estimate for terminal node or fit lm
+        if (glmleaf){
+          leaf_glm[[nodeID]] <<- fit_glm(nodeID) 
+          split_values[[nodeID]] <<- NA
+          split_varIDs[[nodeID]] <<- NA
+        } else {
+          split_values[[nodeID]] <<- estimate(nodeID)
+          split_varIDs[[nodeID]] <<- NA
+        }
       }
     },
     
@@ -81,7 +92,11 @@ Tree <- setRefClass("Tree",
       ## Empty virtual function
     }, 
     
-    getNodePrediction = function(nodeID) {
+    fit_glm = function(nodeID) {
+      ## Empty virtual function
+    },
+    
+    getNodePrediction = function(nodeID, predictobs) {
       ## Empty virtual function
     },
     
@@ -121,7 +136,7 @@ Tree <- setRefClass("Tree",
         }
         
         ## Add to prediction
-        predictions[[i]] <- getNodePrediction(nodeID)
+        predictions[[i]] <- getNodePrediction(nodeID, predict_data$glmsubset(i,))
       }
       return(simplify2array(predictions))
     }, 
@@ -162,7 +177,7 @@ Tree <- setRefClass("Tree",
         }
         
         ## Add to prediction
-        predictions[[i]] <- getNodePrediction(nodeID)
+        predictions[[i]] <- getNodePrediction(nodeID, data$glmsubset(oob_sampleIDs[i],))
       }
       return(simplify2array(predictions))
     }, 
@@ -192,7 +207,7 @@ Tree <- setRefClass("Tree",
             if (split_varIDs[nodeID] == permuted_varID) {
               value <- as.numeric(data$subset(oob_sampleIDs[permutations[i]], split_varIDs[nodeID]))
             } else {
-              value <- as.numeric(data$subset(oob_sampleIDs[i], split_varIDs[nodeID])) 
+              value <- as.numeric(data$subset(oob_sampleIDs[i], split_varIDs[nodeID]))
             }
             if (value <= split_values[nodeID]) {
               nodeID <- child_nodeIDs[[nodeID]][1]
@@ -216,7 +231,7 @@ Tree <- setRefClass("Tree",
         }
         
         ## Add to prediction
-        predictions[[i]] <- getNodePrediction(nodeID)
+        predictions[[i]] <- getNodePrediction(nodeID, data$glmsubset(oob_sampleIDs[i],))
       }
       return(simplify2array(predictions))
     }, 

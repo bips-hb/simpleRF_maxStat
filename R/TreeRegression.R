@@ -219,8 +219,42 @@ TreeRegression <- setRefClass("TreeRegression",
       return(mean(data$subset(sampleIDs[[nodeID]], 1)))
     }, 
     
-    getNodePrediction = function(nodeID) {
-      return(split_values[nodeID])
+    fit_glm = function(nodeID) {      
+      ## Return glm
+      #GLM can only be fitted for factor/ character predictors with more than one class in the node
+      #test if glm includes factor/ character predictors & exclude factor/ character predictors with
+      #only a single class in the node
+      char_fact_ind <- which(attr(terms(data$glmdata), "dataClasses") %in% c("factor","character","ordered"))
+      glmsubset <- data$glmsubset(sampleIDs[[nodeID]],)
+      if (length(char_fact_ind)==0){
+        #no characters or factors included in the formula
+        glm <- lm(data$glmformula, glmsubset)
+      } else{
+        #formula includes characters or factors
+        nunique <- sapply(glmsubset[,char_fact_ind, drop=FALSE], function(x){length(unique(x))})
+        singleclass <- colnames(glmsubset)[char_fact_ind[which(nunique==1)]]
+        if (length(singleclass)==0){
+          #no need for changes, model can be fitted as usual
+          glm <- lm(data$glmformula, glmsubset)
+        } else{
+          #factors/ characters with only one level must be excluded from glm
+          #this also holds for interactions including them
+          confounders_mod <- attr(terms(data$glmdata), "term.labels")[which(!grepl(singleclass, attr(terms(data$glmdata), "term.labels"),fixed=TRUE))]
+          response <- as.character(attr(terms(data$glmdata), "variables"))[[2]][1]
+          glmformula_mod <- as.formula(paste(response, paste(confounders_mod, collapse =" + "), sep=" ~ "))
+          glm <- lm(glmformula_mod, glmsubset)
+        }
+      }
+      return(glm)
+    },
+    
+    getNodePrediction = function(nodeID, predictobs) {
+      if (glmleaf){
+        pred <- predict.lm(leaf_glm[[nodeID]], newdata=predictobs)
+      } else{
+        pred <- split_values[nodeID]
+      }
+      return(pred)
     }, 
     
     predictionError = function(pred = NULL) {

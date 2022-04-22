@@ -17,6 +17,7 @@ Forest <- setRefClass("Forest",
     trees = "list",
     treetype = "character",
     replace = "logical", 
+    glmleaf = "logical",
     covariate_levels = "list"),
   methods = list(
     
@@ -29,6 +30,7 @@ Forest <- setRefClass("Forest",
         x$splitrule <- splitrule
         x$unordered_factors <- unordered_factors
         x$data <- data
+        x$glmleaf <- glmleaf
       })
       
       ## Grow trees
