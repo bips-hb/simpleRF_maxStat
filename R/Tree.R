@@ -182,6 +182,39 @@ Tree <- setRefClass("Tree",
       return(simplify2array(predictions))
     }, 
     
+    getLeaf = function(ID) {
+      ##start in root and drop down tree
+      nodeID <- 1
+      while(TRUE) {
+        ## Break if terminal node
+        if (nodeID > length(child_nodeIDs) || is.null(child_nodeIDs[[nodeID]])) {
+          break
+        }
+        
+        ## Move to child
+        if (length(split_levels_left[[nodeID]]) == 0) {
+          ## Ordered splitting
+          value <- as.numeric(data$subset(ID, split_varIDs[nodeID]))
+          if (value <= split_values[nodeID]) {
+            nodeID <- child_nodeIDs[[nodeID]][1]
+          } else {
+            nodeID <- child_nodeIDs[[nodeID]][2]
+          }
+        } else {
+          ## Unordered splitting
+          value <- data$subset(ID, split_varIDs[nodeID])
+          if (value %in% split_levels_left[[nodeID]]) {
+            nodeID <- child_nodeIDs[[nodeID]][1]
+          } else {
+            nodeID <- child_nodeIDs[[nodeID]][2]
+          }
+        }
+        
+      }
+      
+      return(nodeID)
+    }, 
+    
     predictionError = function(pred = NULL) {
       ## Empty virtual function
     },
