@@ -14,6 +14,7 @@
 ##' @param num_trees Number of trees.
 ##' @param mtry Number of variables to possibly split at in each node.
 ##' @param min_node_size Minimal node size. Default 1 for classification, 5 for regression, 3 for survival and 10 for probability estimation.
+##' @param min_daughter Use the minimal node size for the daughter nodes. Default FALSE.
 ##' @param replace Sample with replacement. Default TRUE.
 ##' @param probability Grow a probability forest. Default FALSE.
 ##' @param splitrule Splitrule to use in trees. Default "Gini" for classification and probability forests, "Variance" for regression forests and "Logrank" for survival forests.
@@ -42,7 +43,7 @@
 ##' @import stats
 ##' @export
 simpleRF <- function(formula, data, num_trees = 50, mtry = NULL, 
-                     min_node_size = NULL, replace = TRUE, probability = FALSE, 
+                     min_node_size = NULL, min_daughter=FALSE, replace = TRUE, probability = FALSE, 
                      splitrule = NULL, unordered_factors = "ignore", 
                      glmleaf = FALSE, num_threads = 1) {
   
@@ -149,7 +150,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
   ## Create forest object
   if (treetype == "Classification") {
     forest <- ForestClassification$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
-                                       min_node_size = as.integer(min_node_size), 
+                                       min_node_size = as.integer(min_node_size), min_daughter=min_daughter,
                                        replace = replace, splitrule = splitrule, glmleaf=glmleaf,
                                        data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                        formula = splitformula, unordered_factors = unordered_factors, 
@@ -157,7 +158,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                                        response_levels = levels(model.data[, 1]))
   } else if (treetype == "Probability") {
     forest <- ForestProbability$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
-                                   min_node_size = as.integer(min_node_size), 
+                                   min_node_size = as.integer(min_node_size), min_daughter=min_daughter,
                                    replace = replace, splitrule = splitrule, glmleaf=glmleaf,
                                    data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                    formula = splitformula, unordered_factors = unordered_factors,
@@ -165,7 +166,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                                    response_levels = levels(model.data[, 1]))
   } else if (treetype == "Regression") {
     forest <- ForestRegression$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
-                                   min_node_size = as.integer(min_node_size), 
+                                   min_node_size = as.integer(min_node_size), min_daughter=min_daughter,
                                    replace = replace, splitrule = splitrule, glmleaf=glmleaf,
                                    data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                    formula = splitformula, unordered_factors = unordered_factors, 
@@ -174,7 +175,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     idx.death <- model.data[, 1][, 2] == 1
     timepoints <- sort(unique(model.data[idx.death, 1][, 1]))
     forest <- ForestSurvival$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
-                                 min_node_size = as.integer(min_node_size), 
+                                 min_node_size = as.integer(min_node_size), min_daughter=min_daughter,
                                  replace = replace, splitrule = splitrule, glmleaf=glmleaf,
                                  data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                  formula = splitformula, unordered_factors = unordered_factors, 

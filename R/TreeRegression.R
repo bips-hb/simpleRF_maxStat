@@ -8,8 +8,8 @@ TreeRegression <- setRefClass("TreeRegression",
   methods = list(
  
     splitNodeInternal = function(nodeID, possible_split_varIDs) {
-      ## Check node size, stop if maximum reached
-      if (length(sampleIDs[[nodeID]]) <= min_node_size) {
+      ## Check node size, stop if maximum reached (for min_daughter=FALSE)
+      if (min_daughter==FALSE & length(sampleIDs[[nodeID]]) <= min_node_size) {
         return(NULL)
       }
       
@@ -142,11 +142,18 @@ TreeRegression <- setRefClass("TreeRegression",
         resid_left <- resid[idx]
         resid_right <- resid[!idx]
         
-        ## Skip if one child empty
-        if (length(response_left) == 0 | length(response_right) == 0) {
-          next
+        ## Skip if one child empty or smaller than min_node_size (for min_daughter=TRUE)
+        if (min_daughter) {
+          if (length(response_left) < min_node_size | length(response_right) < min_node_size) {
+            next
+          }
         }
-        
+        else {
+          if (length(response_left) == 0 | length(response_right) == 0) {
+            next
+          }
+        }
+
         if (splitrule == "Variance") {
           ## Decrease of impurity
           decrease <- sum(response_left)^2/length(response_left) + 
@@ -187,9 +194,16 @@ TreeRegression <- setRefClass("TreeRegression",
         resid_left <- resid[idx]
         resid_right <- resid[!idx]
         
-        ## Skip if one child empty
-        if (length(response_left) == 0 | length(response_right) == 0) {
-          next
+        ## Skip if one child empty or smaller than min_node_size (for min_daughter=TRUE)
+        if (min_daughter) {
+          if (length(response_left) < min_node_size | length(response_right) < min_node_size) {
+            next
+          }
+        }
+        else {
+          if (length(response_left) == 0 | length(response_right) == 0) {
+            next
+          }
         }
         
         if (splitrule == "Variance") {
