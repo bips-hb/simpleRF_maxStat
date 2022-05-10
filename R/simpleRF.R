@@ -72,7 +72,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     model.data <- model.frame(splitformula, data)
     #glmformula <- as.formula(NULL)
     #glm.data <- as.data.frame(NULL)
-    glmformula <- as.formula(paste(as.character(attr(terms(formula), "variables"))[[2]][1], "1", sep=" ~ "))
+    glmformula <- as.formula(paste(as.character(formula)[[2]], "1", sep=" ~ "))
     glm.data <- model.frame(glmformula, data)
   }
   
