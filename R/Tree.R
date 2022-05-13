@@ -17,7 +17,11 @@ Tree <- setRefClass("Tree",
     split_values = "numeric", 
     split_levels_left = "list",
     glmleaf = "logical",
-    leaf_glm = "list"),  
+    leaf_glm = "list",
+    maxstat = "logical",
+    minprop = "numeric",
+    alpha = "numeric",
+    pmethod = "character"),  
   methods = list(
     
     grow = function(replace) {   

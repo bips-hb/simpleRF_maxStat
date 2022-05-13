@@ -136,4 +136,72 @@ as.bitvect <- function(x, length = 32) {
   as.logical(string)
 }
 
+## Wrapper function for maxstat::maxstat
+## Adds minLau92Lau94 pmethod
+## Catches some errors
+##' @importFrom stats pnorm
+maxstat_wrapper <- function(y, x=NULL, weights = NULL, 
+                            smethod=c("Wilcoxon", "Median", "NormalQuantil", "LogRank", "Data"), 
+                            pmethod=c("none", "Lau92", "Lau94", "exactGauss", "HL", "condMC", "min", "none"), 
+                            iscores=(pmethod=="HL"),
+                            minprop = 0.1, maxprop=0.9, alpha = NULL, keepxy=TRUE, ...) {
+  
+  ## maxstat not working with minprop=0/maxprop=1 and 2 categories
+  if (minprop == 0) {
+    minprop <- minprop + .Machine$double.eps
+  }
+  if (maxprop == 1) {
+    maxprop <- maxprop - .Machine$double.eps
+  }
+  
+  if (pmethod == "none" | (length(unique(x)) <= 2 & pmethod != "condMC")) {
+    ## Unajusted p-value if pemthod "none" or only 1 splitpoint
+    tryCatch({ms <- maxstat::maxstat(y = y, x = x, weights = weights, smethod = smethod, pmethod = "none", iscores = iscores,
+                                     minprop = minprop, maxprop = maxprop, alpha = alpha, keepxy = keepxy, ...)
+    
+    pval <- 2*pnorm(-ms$statistic)
+    return(list(p.value = pval, estimate = ms$estimate))
+    }, 
+    error = function(e) {
+      if (e$message == "minprop too large" | e$message == "no data between minprop, maxprop") {
+        return(list(p.value = NA, estimate = NA))
+      } else {
+        print(e)
+        return(NULL)
+      }
+    })
+  } else if (pmethod == "minLau92Lau94" | pmethod == "minLau") {
+    ## Compute pvalues for Lau92 and Lau94
+    lau92 <- maxstat_wrapper(y, x, weights, smethod, pmethod = "Lau92", iscores,
+                             minprop, maxprop, alpha, keepxy, ...)
+    lau94 <- maxstat_wrapper(y, x, weights, smethod, pmethod = "Lau94", iscores,
+                             minprop, maxprop, alpha, keepxy, ...)
+    
+    ## Check results
+    if (is.null(lau92) | is.null(lau94)) {
+      return(NULL)
+    } else if (is.na(lau92$p.value) | is.na(lau94$p.value)) {
+      return(list(p.value = NA, estimate = NA))
+    }
+    
+    ## Return minimum p-value
+    if (lau92$p.value < lau94$p.value) {
+      return(lau92)
+    } else {
+      return(lau94)
+    }
+  } else {
+    ## Use given pmethod
+    tryCatch(maxstat::maxstat(y, x, weights, smethod, pmethod, iscores,
+                              minprop, maxprop, alpha, keepxy, ...), 
+             error = function(e) {
+               if (e$message == "minprop too large" | e$message == "no data between minprop, maxprop") {
+                 return(list(p.value = NA, estimate = NA))
+               } else {
+                 print(e)
+                 return(NULL)
+               }
+             })
+  }
+}
 

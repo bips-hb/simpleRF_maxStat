@@ -20,6 +20,10 @@
 ##' @param splitrule Splitrule to use in trees. Default "Gini" for classification and probability forests, "Variance" for regression forests and "Logrank" for survival forests.
 ##' @param unordered_factors How to handle unordered factor variables. One of "ignore", "order_once", "order_split" and "partition" with default "ignore".
 ##' @param glmleaf Fit glm to leaves. Default FALSE.
+##' @param maxstat Use maximally selected statistics for splitting. Default FALSE.
+##' @param minprop Lower quantile of covariate distribtuion to be considered for splitting.
+##' @param alpha Significance threshold to allow splitting.
+##' @param pmethod P-value approximation method. Can either be one of the generic methods "approximation", "permutation" and "asymptotic" or a specific method of \code{\link{maxstat_chisq}} for classification or \code{\link{maxstat}} for regression and survival. See the respective function for details. 
 ##' @param num_threads Number of threads used for mclapply, set to 1 for debugging.
 ##' @examples 
 ##' \donttest{
@@ -44,8 +48,9 @@
 ##' @export
 simpleRF <- function(formula, data, num_trees = 50, mtry = NULL, 
                      min_node_size = NULL, min_daughter=FALSE, replace = TRUE, probability = FALSE, 
-                     splitrule = NULL, unordered_factors = "ignore", 
-                     glmleaf = FALSE, num_threads = 1) {
+                     splitrule = NULL, unordered_factors = "ignore", glmleaf = FALSE, 
+                     maxstat = FALSE, minprop =  0.1, alpha=0.05, pmethod = "approximation", 
+                     num_threads = 1) {
   
   #distinguish between RF with and without confounders
   if (grepl("|", deparse1(formula), fixed = TRUE)){
@@ -146,6 +151,27 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     ## Save levels
     covariate_levels <- lapply(model.data[, -1], levels)
   }
+  
+  
+  ## Select pmethod
+  if (treetype == "Classification") {
+    if (pmethod == "approximation") {
+      pmethod <- "betensky"
+    } else if (pmethod == "asymptotic") {
+      stop("Currently no asymptotic method for classification implemented.")
+    }
+  } else if (treetype == "Regression" | treetype == "Survival") {
+    if (pmethod == "approximation") {
+      pmethod <- "minLau92Lau94"
+    } else if (pmethod == "permutation") {
+      pmethod <- "condMC"
+    } else if (pmethod == "asymptotic") {
+      pmethod <- "exactGauss"
+    }
+  } else {
+    stop("Unkown tree type.")
+  }
+  
     
   ## Create forest object
   if (treetype == "Classification") {
@@ -155,7 +181,8 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                                        data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                        formula = splitformula, unordered_factors = unordered_factors, 
                                        covariate_levels = covariate_levels,
-                                       response_levels = levels(model.data[, 1]))
+                                       response_levels = levels(model.data[, 1]),
+                                       maxstat = maxstat, minprop = minprop, alpha = alpha, pmethod = pmethod)
   } else if (treetype == "Probability") {
     forest <- ForestProbability$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
                                    min_node_size = as.integer(min_node_size), min_daughter=min_daughter,
@@ -163,14 +190,16 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                                    data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                    formula = splitformula, unordered_factors = unordered_factors,
                                    covariate_levels = covariate_levels,
-                                   response_levels = levels(model.data[, 1]))
+                                   response_levels = levels(model.data[, 1]),
+                                   maxstat = maxstat, minprop = minprop, alpha = alpha, pmethod = pmethod)
   } else if (treetype == "Regression") {
     forest <- ForestRegression$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
                                    min_node_size = as.integer(min_node_size), min_daughter=min_daughter,
                                    replace = replace, splitrule = splitrule, glmleaf=glmleaf,
                                    data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                    formula = splitformula, unordered_factors = unordered_factors, 
-                                   covariate_levels = covariate_levels)
+                                   covariate_levels = covariate_levels,
+                                   maxstat = maxstat, minprop = minprop, alpha = alpha, pmethod = pmethod)
   } else if (treetype == "Survival") {
     idx.death <- model.data[, 1][, 2] == 1
     timepoints <- sort(unique(model.data[idx.death, 1][, 1]))
@@ -180,7 +209,8 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                                  data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                  formula = splitformula, unordered_factors = unordered_factors, 
                                  covariate_levels = covariate_levels,
-                                 timepoints = timepoints)
+                                 timepoints = timepoints,
+                                 maxstat = maxstat, minprop = minprop, alpha = alpha, pmethod = pmethod)
   } else {
     stop("Unkown tree type.")
   }

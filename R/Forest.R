@@ -19,6 +19,10 @@ Forest <- setRefClass("Forest",
     treetype = "character",
     replace = "logical", 
     glmleaf = "logical",
+    maxstat = "logical",
+    minprop = "numeric",
+    alpha = "numeric",
+    pmethod = "character",
     covariate_levels = "list"),
   methods = list(
     
@@ -33,6 +37,10 @@ Forest <- setRefClass("Forest",
         x$unordered_factors <- unordered_factors
         x$data <- data
         x$glmleaf <- glmleaf
+        x$maxstat <- maxstat
+        x$minprop <- minprop
+        x$alpha <- alpha
+        x$pmethod <- pmethod
       })
       
       ## Grow trees
@@ -93,6 +101,7 @@ Forest <- setRefClass("Forest",
       cat("simpleRF Forest\n")
       cat("Type:                               ", treetype, "\n")
       cat("Splitrule:                          ", splitrule, "\n")
+      cat("Maxstat splitting:                  ", maxstat, "\n")
       cat("Confounders:                        ", data$confounders, "\n")
       cat("Number of trees:                    ", num_trees, "\n")
       cat("Sample size:                        ", data$nrow, "\n")
@@ -100,6 +109,8 @@ Forest <- setRefClass("Forest",
       cat("Mtry:                               ", mtry, "\n")
       cat("Target node size:                   ", min_node_size, "\n")
       cat("Node size applied to daughter nodes ", min_daughter, "\n")
+      cat("Minprop:                            ", minprop, "\n")
+      cat("Alpha:                              ", alpha, "\n")
       cat("Replace                             ", replace, "\n")
       cat("Model in terminal nodes             ", glmleaf, "\n")
       cat("Unordered factor handling           ", unordered_factors, "\n")

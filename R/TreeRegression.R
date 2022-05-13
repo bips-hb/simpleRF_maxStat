@@ -26,9 +26,16 @@ TreeRegression <- setRefClass("TreeRegression",
     findBestSplit = function(nodeID, possible_split_varIDs) {
       ## Initialize
       best_split <- NULL
-      best_split$decrease <- -1
+      if (maxstat) {
+        #decrease corresponds to the pvalue, thus smaller values are preferable
+        best_split$decrease <- 2
+      } else {
+        best_split$decrease <- -1
+      }
       best_split$varID <- -1
       best_split$value <- -1
+      #to perform the Benjamini-Hochberg adjustment a list of all p-values is required
+      best_split$pvalues <- cbind(possible_split_varIDs,numeric(length(possible_split_varIDs)))
       
       ## Get response
       response <- data$subset(sampleIDs[[nodeID]], 1)
@@ -120,6 +127,20 @@ TreeRegression <- setRefClass("TreeRegression",
       if (best_split$varID < 0) {
         ## Stop if no good split found
         return(NULL)
+      } else if (maxstat) {
+        ## Adjust p values with Benjamini/Hochberg, use smallest
+        adjusted_pvalue <- min(p.adjust(best_split$pvalues[,2], "fdr"), na.rm = TRUE)
+        if (adjusted_pvalue > alpha) {
+          ## Stop if no good split found
+          return(NULL)
+        } else {
+          ## Return best split
+          result <- NULL
+          result$varID <- as.integer(best_split$varID)
+          result$value <- best_split$value
+          return(result)
+        }
+        
       } else {
         ## Return best split
         result <- NULL
@@ -130,50 +151,85 @@ TreeRegression <- setRefClass("TreeRegression",
     }, 
     
     findBestSplitValueOrdered = function(split_varID, data_values, best_split, response, resid) {
-      ## For all possible splits
-      possible_split_values <- unique(data_values)
-      for (j in 1:length(possible_split_values)) {
-        split_value <- possible_split_values[j]
-
-        ## Sum responses & residuals in childs
-        idx <- data_values <= split_value
-        response_left <- response[idx]
-        response_right <- response[!idx]
-        resid_left <- resid[idx]
-        resid_right <- resid[!idx]
-        
-        ## Skip if one child empty or smaller than min_node_size (for min_daughter=TRUE)
-        if (min_daughter) {
-          if (length(response_left) < min_node_size | length(response_right) < min_node_size) {
-            next
-          }
-        }
-        else {
-          if (length(response_left) == 0 | length(response_right) == 0) {
-            next
-          }
-        }
-
+      ## maxstat=TRUE
+      if (maxstat) {#test to determine split point
         if (splitrule == "Variance") {
-          ## Decrease of impurity
-          decrease <- sum(response_left)^2/length(response_left) + 
-            sum(response_right)^2/length(response_right)
+          ## Use response for splitting
+          maxstat_result <- maxstat_wrapper(y = response, x = data_values, smethod = "Wilcoxon", 
+                          pmethod = pmethod, minprop = minprop, maxprop = 1-minprop)
+          
         } else if (splitrule == "Residuals") { 
-          ## Decrease of impurity
-          decrease <- sum(resid_left)^2/length(resid_left) + 
-            sum(resid_right)^2/length(resid_right)
+          ## Use residuals for splitting
+          maxstat_result <- maxstat_wrapper(y = resid, x = data_values, smethod = "Wilcoxon", 
+                          pmethod = pmethod, minprop = minprop, maxprop = 1-minprop)
         } else {
           stop("Unknown splitrule.")
+        } 
+        split_value <- maxstat_result$estimate
+        #pvalue saved in decrease to save storage
+        decrease <- maxstat_result$p.value
+        
+        if (!is.null(decrease)) {
+          best_split$pvalues[which(best_split$pvalues[,1]==split_varID),2] <- decrease
+          ## Use this split if better than before
+          #careful: decrease is the pvalue, thus smaller values are preferable
+          if (decrease < best_split$decrease) {
+            best_split$value <- split_value
+            best_split$varID <- split_varID
+            best_split$decrease <- decrease
+          }
+        } else {
+          best_split$pvalues[which(best_split$pvalues[,1]==split_varID),2] <- NA
         }
-
-        ## Use this split if better than before
-        if (decrease > best_split$decrease) {
-          best_split$value <- split_value
-          best_split$varID <- split_varID
-          best_split$decrease <- decrease
+        
+        return(best_split)
+        
+      } else {#exhaustive search
+        ## For all possible splits
+        possible_split_values <- unique(data_values)
+        for (j in 1:length(possible_split_values)) {
+          split_value <- possible_split_values[j]
+          
+          ## Sum responses & residuals in childs
+          idx <- data_values <= split_value
+          response_left <- response[idx]
+          response_right <- response[!idx]
+          resid_left <- resid[idx]
+          resid_right <- resid[!idx]
+          
+          ## Skip if one child empty or smaller than min_node_size (for min_daughter=TRUE)
+          if (min_daughter) {
+            if (length(response_left) < min_node_size | length(response_right) < min_node_size) {
+              next
+            }
+          }
+          else {
+            if (length(response_left) == 0 | length(response_right) == 0) {
+              next
+            }
+          }
+          
+          if (splitrule == "Variance") {
+            ## Decrease of impurity
+            decrease <- sum(response_left)^2/length(response_left) + 
+              sum(response_right)^2/length(response_right)
+          } else if (splitrule == "Residuals") { 
+            ## Decrease of impurity
+            decrease <- sum(resid_left)^2/length(resid_left) + 
+              sum(resid_right)^2/length(resid_right)
+          } else {
+            stop("Unknown splitrule.")
+          }
+          
+          ## Use this split if better than before
+          if (decrease > best_split$decrease) {
+            best_split$value <- split_value
+            best_split$varID <- split_varID
+            best_split$decrease <- decrease
+          }
         }
+        return(best_split)
       }
-      return(best_split)
     },
     
     findBestSplitValuePartition = function(split_varID, data_values, best_split, response, resid) {
