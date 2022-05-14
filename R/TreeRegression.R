@@ -169,7 +169,7 @@ TreeRegression <- setRefClass("TreeRegression",
         #pvalue saved in decrease to save storage
         decrease <- maxstat_result$p.value
         
-        if (!is.null(decrease)) {
+        if (!is.null(decrease) & !is.na(decrease)) {
           best_split$pvalues[which(best_split$pvalues[,1]==split_varID),2] <- decrease
           ## Use this split if better than before
           #careful: decrease is the pvalue, thus smaller values are preferable
