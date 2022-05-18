@@ -5,8 +5,8 @@
 Tree <- setRefClass("Tree", 
   fields = list(
     mtry = "integer", 
-    min_node_size = "integer",
-    min_daughter = "logical",
+    minsplit = "integer",
+    minbucket = "integer",
     splitrule = "character",
     unordered_factors = "character",
     data = "Data", 

@@ -8,8 +8,8 @@ Forest <- setRefClass("Forest",
   fields = list(
     num_trees = "integer", 
     mtry = "integer", 
-    min_node_size = "integer", 
-    min_daughter = "logical",
+    minsplit = "integer", 
+    minbucket = "integer",
     splitrule = "character",
     unordered_factors = "character",
     data = "Data",
@@ -31,8 +31,8 @@ Forest <- setRefClass("Forest",
       ## Init trees
       temp <- lapply(trees, function(x) {
         x$mtry <- mtry
-        x$min_node_size <- min_node_size
-        x$min_daughter <- min_daughter
+        x$minsplit <- minsplit
+        x$minbucket <- minbucket
         x$splitrule <- splitrule
         x$unordered_factors <- unordered_factors
         x$data <- data
@@ -107,8 +107,8 @@ Forest <- setRefClass("Forest",
       cat("Sample size:                        ", data$nrow, "\n")
       cat("Number of independent variables:    ", data$ncol-1, "\n")
       cat("Mtry:                               ", mtry, "\n")
-      cat("Target node size:                   ", min_node_size, "\n")
-      cat("Node size applied to daughter nodes ", min_daughter, "\n")
+      cat("Minimal node size for splitting:    ", minsplit, "\n")
+      cat("Minimal terminal node size:         ", minbucket, "\n")
       cat("Minprop:                            ", minprop, "\n")
       cat("Alpha:                              ", alpha, "\n")
       cat("Replace                             ", replace, "\n")

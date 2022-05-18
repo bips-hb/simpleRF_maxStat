@@ -13,8 +13,8 @@
 ##' @param data Training data of class \code{data.frame}.
 ##' @param num_trees Number of trees.
 ##' @param mtry Number of variables to possibly split at in each node.
-##' @param min_node_size Minimal node size. Default 1 for classification, 5 for regression, 3 for survival and 10 for probability estimation.
-##' @param min_daughter Use the minimal node size for the daughter nodes. Default FALSE.
+##' @param minsplit Minimal node size for a node to be considered for splitting. Default 1 for classification, 5 for regression, 3 for survival and 10 for probability estimation.
+##' @param minbucket Minimal node size for a terminal node. Default 0, i.e. no restrictions on the terminal node size.
 ##' @param replace Sample with replacement. Default TRUE.
 ##' @param probability Grow a probability forest. Default FALSE.
 ##' @param splitrule Splitrule to use in trees. Default "Gini" for classification and probability forests, "Variance" for regression forests and "Logrank" for survival forests.
@@ -47,7 +47,7 @@
 ##' @import stats
 ##' @export
 simpleRF <- function(formula, data, num_trees = 50, mtry = NULL, 
-                     min_node_size = NULL, min_daughter=FALSE, replace = TRUE, probability = FALSE, 
+                     minsplit = NULL, minbucket = 1, replace = TRUE, probability = FALSE, 
                      splitrule = NULL, unordered_factors = "ignore", glmleaf = FALSE, 
                      maxstat = FALSE, minprop =  0.1, alpha=0.05, pmethod = "approximation", 
                      num_threads = 1) {
@@ -101,15 +101,15 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
   } else if (mtry > ncol(model.data)-1) {
     stop("Mtry cannot be larger than number of independent variables.")
   }
-  if (is.null(min_node_size)) {
+  if (is.null(minsplit)) {
     if (treetype == "Classification") {
-      min_node_size <- 1
+      minsplit <- 1
     } else if (treetype == "Probability") {
-      min_node_size <- 10
+      minsplit <- 10
     } else if (treetype == "Regression") {
-      min_node_size <- 5
+      minsplit <- 5
     } else if (treetype == "Survival") {
-      min_node_size <- 3
+      minsplit <- 3
     }
   }
   
@@ -176,7 +176,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
   ## Create forest object
   if (treetype == "Classification") {
     forest <- ForestClassification$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
-                                       min_node_size = as.integer(min_node_size), min_daughter=min_daughter,
+                                       minsplit = as.integer(minsplit), minbucket = as.integer(minbucket),
                                        replace = replace, splitrule = splitrule, glmleaf=glmleaf,
                                        data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                        formula = splitformula, unordered_factors = unordered_factors, 
@@ -185,7 +185,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                                        maxstat = maxstat, minprop = minprop, alpha = alpha, pmethod = pmethod)
   } else if (treetype == "Probability") {
     forest <- ForestProbability$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
-                                   min_node_size = as.integer(min_node_size), min_daughter=min_daughter,
+                                    minsplit = as.integer(minsplit), minbucket = as.integer(minbucket),
                                    replace = replace, splitrule = splitrule, glmleaf=glmleaf,
                                    data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                    formula = splitformula, unordered_factors = unordered_factors,
@@ -194,7 +194,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                                    maxstat = maxstat, minprop = minprop, alpha = alpha, pmethod = pmethod)
   } else if (treetype == "Regression") {
     forest <- ForestRegression$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
-                                   min_node_size = as.integer(min_node_size), min_daughter=min_daughter,
+                                   minsplit = as.integer(minsplit), minbucket = as.integer(minbucket),
                                    replace = replace, splitrule = splitrule, glmleaf=glmleaf,
                                    data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                    formula = splitformula, unordered_factors = unordered_factors, 
@@ -204,7 +204,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     idx.death <- model.data[, 1][, 2] == 1
     timepoints <- sort(unique(model.data[idx.death, 1][, 1]))
     forest <- ForestSurvival$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
-                                 min_node_size = as.integer(min_node_size), min_daughter=min_daughter,
+                                 minsplit = as.integer(minsplit), minbucket = as.integer(minbucket),
                                  replace = replace, splitrule = splitrule, glmleaf=glmleaf,
                                  data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                  formula = splitformula, unordered_factors = unordered_factors, 
