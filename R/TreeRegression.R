@@ -34,6 +34,9 @@ TreeRegression <- setRefClass("TreeRegression",
       }
       best_split$varID <- -1
       best_split$value <- -1
+      best_split$meanresid_left <- NULL
+      best_split$meanresid_right <- NULL
+      glm <- NULL
       #to perform the Benjamini-Hochberg adjustment a list of all p-values is required
       best_split$pvalues <- cbind(possible_split_varIDs,numeric(length(possible_split_varIDs)))
       
@@ -50,21 +53,24 @@ TreeRegression <- setRefClass("TreeRegression",
         glmsubset <- data$glmsubset(sampleIDs[[nodeID]],)
         if (length(char_fact_ind)==0){
           #no characters or factors included in the formula
-          resid <- lm(data$glmformula, glmsubset)$residuals
+          glm <- lm(data$glmformula, glmsubset)
+          resid <- glm$residuals
         } else{
           #formula includes characters or factors
           nunique <- sapply(glmsubset[,char_fact_ind, drop=FALSE], function(x){length(unique(x))})
           singleclass <- colnames(glmsubset)[char_fact_ind[which(nunique==1)]]
           if (length(singleclass)==0){
             #no need for changes, model can be fitted as usual
-            resid <- lm(data$glmformula, glmsubset)$residuals
+            glm <- lm(data$glmformula, glmsubset)
+            resid <- glm$residuals
           } else{
             #factors/ characters with only one level must be excluded from glm
             #this also holds for interactions including them
             confounders_mod <- attr(terms(data$glmdata), "term.labels")[which(!grepl(singleclass, attr(terms(data$glmdata), "term.labels"),fixed=TRUE))]
             response <- as.character(attr(terms(data$glmdata), "variables"))[[2]][1]
             glmformula_mod <- as.formula(paste(response, paste(confounders_mod, collapse =" + "), sep=" ~ "))
-            resid <- lm(glmformula_mod, glmsubset)$residuals
+            glm <- lm(glmformula_mod, glmsubset)
+            resid <- glm$residuals
           }
         }
       }
@@ -146,6 +152,9 @@ TreeRegression <- setRefClass("TreeRegression",
         result <- NULL
         result$varID <- as.integer(best_split$varID)
         result$value <- best_split$value
+        result$parentglm <- glm
+        result$meanresid_left <- best_split$meanresid_left
+        result$meanresid_right <- best_split$meanresid_right
         return(result)
       }      
     }, 
@@ -219,6 +228,10 @@ TreeRegression <- setRefClass("TreeRegression",
             best_split$value <- split_value
             best_split$varID <- split_varID
             best_split$decrease <- decrease
+            if (splitrule == "Residuals"){
+              best_split$meanresid_left <- mean(resid_left)
+              best_split$meanresid_right <- mean(resid_right)
+            }
           }
         }
         return(best_split)
@@ -271,45 +284,50 @@ TreeRegression <- setRefClass("TreeRegression",
     },
     
     estimate = function(nodeID) {      
-      ## Return mean response
-      return(mean(data$subset(sampleIDs[[nodeID]], 1)))
+      if (splitrule == "Residuals"){
+        ## Return mean of the residuals
+        return(mean_resid[[nodeID]])
+      } else {
+        ## Return mean response
+        return(mean(data$subset(sampleIDs[[nodeID]], 1)))
+      }
     }, 
     
-    fit_glm = function(nodeID) {      
-      ## Return glm
-      #GLM can only be fitted for factor/ character predictors with more than one class in the node
-      #test if glm includes factor/ character predictors & exclude factor/ character predictors with
-      #only a single class in the node
-      char_fact_ind <- which(attr(terms(data$glmdata), "dataClasses") %in% c("factor","character","ordered"))
-      glmsubset <- data$glmsubset(sampleIDs[[nodeID]],)
-      if (length(char_fact_ind)==0){
-        #no characters or factors included in the formula
-        glm <- lm(data$glmformula, glmsubset)
-      } else{
-        #formula includes characters or factors
-        nunique <- sapply(glmsubset[,char_fact_ind, drop=FALSE], function(x){length(unique(x))})
-        singleclass <- colnames(glmsubset)[char_fact_ind[which(nunique==1)]]
-        if (length(singleclass)==0){
-          #no need for changes, model can be fitted as usual
-          glm <- lm(data$glmformula, glmsubset)
-        } else{
-          #factors/ characters with only one level must be excluded from glm
-          #this also holds for interactions including them
-          confounders_mod <- attr(terms(data$glmdata), "term.labels")[which(!grepl(singleclass, attr(terms(data$glmdata), "term.labels"),fixed=TRUE))]
-          response <- as.character(attr(terms(data$glmdata), "variables"))[[2]][1]
-          glmformula_mod <- as.formula(paste(response, paste(confounders_mod, collapse =" + "), sep=" ~ "))
-          glm <- lm(glmformula_mod, glmsubset)
-        }
-      }
-      return(glm)
-    },
+#    fit_glm = function(nodeID) {      
+#      ## Return glm
+#      #GLM can only be fitted for factor/ character predictors with more than one class in the node
+#      #test if glm includes factor/ character predictors & exclude factor/ character predictors with
+#      #only a single class in the node
+#      char_fact_ind <- which(attr(terms(data$glmdata), "dataClasses") %in% c("factor","character","ordered"))
+#      glmsubset <- data$glmsubset(sampleIDs[[nodeID]],)
+#      if (length(char_fact_ind)==0){
+#        #no characters or factors included in the formula
+#        glm <- lm(data$glmformula, glmsubset)
+#      } else{
+#        #formula includes characters or factors
+#        nunique <- sapply(glmsubset[,char_fact_ind, drop=FALSE], function(x){length(unique(x))})
+#        singleclass <- colnames(glmsubset)[char_fact_ind[which(nunique==1)]]
+#        if (length(singleclass)==0){
+#          #no need for changes, model can be fitted as usual
+#          glm <- lm(data$glmformula, glmsubset)
+#        } else{
+#          #factors/ characters with only one level must be excluded from glm
+#          #this also holds for interactions including them
+#          confounders_mod <- attr(terms(data$glmdata), "term.labels")[which(!grepl(singleclass, attr(terms(data$glmdata), "term.labels"),fixed=TRUE))]
+#          response <- as.character(attr(terms(data$glmdata), "variables"))[[2]][1]
+#          glmformula_mod <- as.formula(paste(response, paste(confounders_mod, collapse =" + "), sep=" ~ "))
+#          glm <- lm(glmformula_mod, glmsubset)
+#        }
+#      }
+#      return(glm)
+#    },
     
     getNodePrediction = function(nodeID, predictobs) {
-      if (glmleaf){
-        pred <- predict.lm(leaf_glm[[nodeID]], newdata=predictobs)
-      } else{
+      #if (splitrule=="Residuals"){
+      #  pred <- predict.lm(parentglm[[nodeID]], newdata=predictobs) + split_values[nodeID]
+      #} else{
         pred <- split_values[nodeID]
-      }
+      #}
       return(pred)
     }, 
     

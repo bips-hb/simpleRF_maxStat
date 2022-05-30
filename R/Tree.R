@@ -17,7 +17,8 @@ Tree <- setRefClass("Tree",
     split_values = "numeric", 
     split_levels_left = "list",
     glmleaf = "logical",
-    leaf_glm = "list",
+    parentglm = "list",
+    mean_resid = "list",
     maxstat = "logical",
     minprop = "numeric",
     alpha = "numeric",
@@ -53,15 +54,20 @@ Tree <- setRefClass("Tree",
         ## Assign split
         split_varIDs[[nodeID]] <<- split$varID
         split_values[[nodeID]] <<- split$value
-        if (glmleaf){
-          leaf_glm[[nodeID]] <<- NA
-        }
       
         ## Create child nodes
         left_child <- length(sampleIDs) + 1
         right_child <- length(sampleIDs) + 2
         child_nodeIDs[[nodeID]] <<- c(left_child, right_child)
         
+        ## Assign mean residuals & parentglm to child node
+        if (splitrule == "Residuals"){
+          mean_resid[[left_child]] <<- split$meanresid_left
+          mean_resid[[right_child]] <<- split$meanresid_right
+          parentglm[[left_child]] <<- split$parentglm
+          parentglm[[right_child]] <<- split$parentglm
+        }
+ 
         ## For each sample in node, assign to left or right child
         if (length(split_levels_left[[nodeID]]) == 0) {
           ## Ordered splitting
@@ -78,14 +84,8 @@ Tree <- setRefClass("Tree",
         splitNode(right_child)
       } else {
         ## Compute estimate for terminal node or fit lm
-        if (glmleaf){
-          leaf_glm[[nodeID]] <<- fit_glm(nodeID) 
-          split_values[[nodeID]] <<- NA
-          split_varIDs[[nodeID]] <<- NA
-        } else {
-          split_values[[nodeID]] <<- estimate(nodeID)
-          split_varIDs[[nodeID]] <<- NA
-        }
+        split_varIDs[[nodeID]] <<- NA
+        split_values[[nodeID]] <<- estimate(nodeID)
       }
     },
     
@@ -97,9 +97,9 @@ Tree <- setRefClass("Tree",
       ## Empty virtual function
     }, 
     
-    fit_glm = function(nodeID) {
+    #fit_glm = function(nodeID) {
       ## Empty virtual function
-    },
+    #},
     
     getNodePrediction = function(nodeID, predictobs) {
       ## Empty virtual function
