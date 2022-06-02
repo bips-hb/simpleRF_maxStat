@@ -73,6 +73,11 @@ TreeRegression <- setRefClass("TreeRegression",
             resid <- glm$residuals
           }
         }
+        if(nodeID==1){
+          #for the first node no glm from parent nodes is available and thus the glm from
+          #the node itself is saved
+          parentglm[[nodeID]] <<- glm
+        }
       }
       
       ## For all possible variables
@@ -144,6 +149,9 @@ TreeRegression <- setRefClass("TreeRegression",
           result <- NULL
           result$varID <- as.integer(best_split$varID)
           result$value <- best_split$value
+          result$parentglm <- glm
+          result$meanresid_left <- best_split$meanresid_left
+          result$meanresid_right <- best_split$meanresid_right
           return(result)
         }
         
@@ -186,6 +194,11 @@ TreeRegression <- setRefClass("TreeRegression",
             best_split$value <- split_value
             best_split$varID <- split_varID
             best_split$decrease <- decrease
+            if (splitrule == "Residuals"){
+              idx <- data_values <= split_value
+              best_split$meanresid_left <- mean(resid[idx])
+              best_split$meanresid_right <- mean(resid[!idx])
+            }
           }
         } else {
           best_split$pvalues[which(best_split$pvalues[,1]==split_varID),2] <- NA
@@ -285,8 +298,13 @@ TreeRegression <- setRefClass("TreeRegression",
     
     estimate = function(nodeID) {      
       if (splitrule == "Residuals"){
-        ## Return mean of the residuals
-        return(mean_resid[[nodeID]])
+        if(length(mean_resid)>=nodeID){
+          ## Return mean of the residuals
+          return(mean_resid[[nodeID]])
+        } else {
+          ## Return 0 if no split has been performed
+          return(0)
+        }
       } else {
         ## Return mean response
         return(mean(data$subset(sampleIDs[[nodeID]], 1)))
@@ -323,11 +341,16 @@ TreeRegression <- setRefClass("TreeRegression",
 #    },
     
     getNodePrediction = function(nodeID, predictobs) {
-      #if (splitrule=="Residuals"){
-      #  pred <- predict.lm(parentglm[[nodeID]], newdata=predictobs) + split_values[nodeID]
-      #} else{
+      if (splitrule=="Residuals"){
+        if(length(parentglm)==1){
+          ## no split has been performed
+          pred <- predict.lm(parentglm[[1]], newdata=predictobs) + split_values[nodeID]
+        } else {
+          pred <- predict.lm(parentglm[[nodeID]], newdata=predictobs) + split_values[nodeID]
+        }
+      } else{
         pred <- split_values[nodeID]
-      #}
+      }
       return(pred)
     }, 
     

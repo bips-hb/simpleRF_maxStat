@@ -49,7 +49,6 @@ Tree <- setRefClass("Tree",
       
       ## Split node
       split <- splitNodeInternal(nodeID, possible_split_varIDs)
-      
       if (!is.null(split)) {
         ## Assign split
         split_varIDs[[nodeID]] <<- split$varID
