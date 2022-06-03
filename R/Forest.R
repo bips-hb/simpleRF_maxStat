@@ -18,7 +18,7 @@ Forest <- setRefClass("Forest",
     trees = "list",
     treetype = "character",
     replace = "logical", 
-    glmleaf = "logical",
+    predleaf = "character",
     maxstat = "logical",
     minprop = "numeric",
     alpha = "numeric",
@@ -36,7 +36,7 @@ Forest <- setRefClass("Forest",
         x$splitrule <- splitrule
         x$unordered_factors <- unordered_factors
         x$data <- data
-        x$glmleaf <- glmleaf
+        x$predleaf <- predleaf
         x$maxstat <- maxstat
         x$minprop <- minprop
         x$alpha <- alpha
@@ -116,7 +116,7 @@ Forest <- setRefClass("Forest",
       cat("Minprop:                            ", minprop, "\n")
       cat("Alpha:                              ", alpha, "\n")
       cat("Replace                             ", replace, "\n")
-      cat("Model in terminal nodes             ", glmleaf, "\n")
+      cat("Predictions in leaves               ", predleaf, "\n")
       cat("Unordered factor handling           ", unordered_factors, "\n")
       cat("OOB prediction error:               ", predictionError(), "\n")
     }, 

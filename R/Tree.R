@@ -16,8 +16,8 @@ Tree <- setRefClass("Tree",
     split_varIDs = "integer",    
     split_values = "numeric", 
     split_levels_left = "list",
-    glmleaf = "logical",
-    parentglm = "list",
+    predleaf = "character",
+    nodeglm = "list",
     mean_resid = "list",
     maxstat = "logical",
     minprop = "numeric",
@@ -53,6 +53,9 @@ Tree <- setRefClass("Tree",
         ## Assign split
         split_varIDs[[nodeID]] <<- split$varID
         split_values[[nodeID]] <<- split$value
+        if (predleaf == "GLM"){
+          nodeglm[[nodeID]] <<- NA
+        }
       
         ## Create child nodes
         left_child <- length(sampleIDs) + 1
@@ -60,11 +63,11 @@ Tree <- setRefClass("Tree",
         child_nodeIDs[[nodeID]] <<- c(left_child, right_child)
         
         ## Assign mean residuals & parentglm to child node
-        if (splitrule == "Residuals"){
+        if (predleaf == "Meanresid"){
           mean_resid[[left_child]] <<- split$meanresid_left
           mean_resid[[right_child]] <<- split$meanresid_right
-          parentglm[[left_child]] <<- split$parentglm
-          parentglm[[right_child]] <<- split$parentglm
+          nodeglm[[left_child]] <<- split$nodeglm
+          nodeglm[[right_child]] <<- split$nodeglm
         }
  
         ## For each sample in node, assign to left or right child
@@ -83,8 +86,13 @@ Tree <- setRefClass("Tree",
         splitNode(right_child)
       } else {
         ## Compute estimate for terminal node or fit lm
+        if (predleaf == "GLM") {
+          nodeglm[[nodeID]] <<- fit_glm(nodeID)
+          split_values[[nodeID]] <<- NA
+        } else {
+          split_values[[nodeID]] <<- estimate(nodeID)
+        }
         split_varIDs[[nodeID]] <<- NA
-        split_values[[nodeID]] <<- estimate(nodeID)
       }
     },
     
@@ -96,9 +104,9 @@ Tree <- setRefClass("Tree",
       ## Empty virtual function
     }, 
     
-    #fit_glm = function(nodeID) {
+    fit_glm = function(nodeID) {
       ## Empty virtual function
-    #},
+    },
     
     getNodePrediction = function(nodeID, predictobs) {
       ## Empty virtual function

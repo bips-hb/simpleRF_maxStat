@@ -19,7 +19,7 @@
 ##' @param probability Grow a probability forest. Default FALSE.
 ##' @param splitrule Splitrule to use in trees. Default "Gini" for classification and probability forests, "Variance" for regression forests and "Logrank" for survival forests.
 ##' @param unordered_factors How to handle unordered factor variables. One of "ignore", "order_once", "order_split" and "partition" with default "ignore".
-##' @param glmleaf Fit glm to leaves. Default FALSE.
+##' @param leafpred Prediction in the leaves. Default "Meanresid" for splitrule="Residuals" & "Meanout" for splitrule="Variance".
 ##' @param maxstat Use maximally selected statistics for splitting. Default FALSE.
 ##' @param minprop Lower quantile of covariate distribtuion to be considered for splitting.
 ##' @param alpha Significance threshold to allow splitting.
@@ -48,7 +48,7 @@
 ##' @export
 simpleRF <- function(formula, data, num_trees = 50, mtry = NULL, 
                      minsplit = NULL, minbucket = 1, replace = TRUE, probability = FALSE, 
-                     splitrule = NULL, unordered_factors = "ignore", glmleaf = FALSE, 
+                     splitrule = NULL, unordered_factors = "ignore", predleaf = NULL, 
                      maxstat = FALSE, minprop =  0.1, alpha=0.05, pmethod = "approximation", 
                      num_threads = 1) {
   
@@ -126,6 +126,14 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     }
   }
   
+  ## Predictions in leaves
+  if (is.null(predleaf)) {
+    if (splitrule == "Residuals") {
+      predleaf <- "Meanresid"
+    } else {
+      predleaf <- "Meanout"
+    }
+  }
   
   ## Unordered factors
   if (!(unordered_factors %in% c("ignore", "order_once", "order_split", "partition"))) {
@@ -152,7 +160,6 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     covariate_levels <- lapply(model.data[, -1], levels)
   }
   
-  
   ## Select pmethod
   if (treetype == "Classification") {
     if (pmethod == "approximation") {
@@ -177,7 +184,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
   if (treetype == "Classification") {
     forest <- ForestClassification$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
                                        minsplit = as.integer(minsplit), minbucket = as.integer(minbucket),
-                                       replace = replace, splitrule = splitrule, glmleaf=glmleaf,
+                                       replace = replace, splitrule = splitrule, predleaf=predleaf,
                                        data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                        formula = splitformula, unordered_factors = unordered_factors, 
                                        covariate_levels = covariate_levels,
@@ -186,7 +193,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
   } else if (treetype == "Probability") {
     forest <- ForestProbability$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
                                     minsplit = as.integer(minsplit), minbucket = as.integer(minbucket),
-                                   replace = replace, splitrule = splitrule, glmleaf=glmleaf,
+                                   replace = replace, splitrule = splitrule, predleaf=predleaf,
                                    data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                    formula = splitformula, unordered_factors = unordered_factors,
                                    covariate_levels = covariate_levels,
@@ -195,7 +202,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
   } else if (treetype == "Regression") {
     forest <- ForestRegression$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
                                    minsplit = as.integer(minsplit), minbucket = as.integer(minbucket),
-                                   replace = replace, splitrule = splitrule, glmleaf=glmleaf,
+                                   replace = replace, splitrule = splitrule, predleaf=predleaf,
                                    data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                    formula = splitformula, unordered_factors = unordered_factors, 
                                    covariate_levels = covariate_levels,
@@ -205,7 +212,7 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     timepoints <- sort(unique(model.data[idx.death, 1][, 1]))
     forest <- ForestSurvival$new(num_trees = as.integer(num_trees), mtry = as.integer(mtry), 
                                  minsplit = as.integer(minsplit), minbucket = as.integer(minbucket),
-                                 replace = replace, splitrule = splitrule, glmleaf=glmleaf,
+                                 replace = replace, splitrule = splitrule, predleaf=predleaf,
                                  data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
                                  formula = splitformula, unordered_factors = unordered_factors, 
                                  covariate_levels = covariate_levels,

@@ -73,10 +73,10 @@ TreeRegression <- setRefClass("TreeRegression",
             resid <- glm$residuals
           }
         }
-        if(nodeID==1){
+        if(predleaf=="Meanresid" & nodeID==1){
           #for the first node no glm from parent nodes is available and thus the glm from
           #the node itself is saved
-          parentglm[[nodeID]] <<- glm
+          nodeglm[[nodeID]] <<- glm
         }
       }
       
@@ -149,7 +149,7 @@ TreeRegression <- setRefClass("TreeRegression",
           result <- NULL
           result$varID <- as.integer(best_split$varID)
           result$value <- best_split$value
-          result$parentglm <- glm
+          result$nodeglm <- glm
           result$meanresid_left <- best_split$meanresid_left
           result$meanresid_right <- best_split$meanresid_right
           return(result)
@@ -160,7 +160,7 @@ TreeRegression <- setRefClass("TreeRegression",
         result <- NULL
         result$varID <- as.integer(best_split$varID)
         result$value <- best_split$value
-        result$parentglm <- glm
+        result$nodeglm <- glm
         result$meanresid_left <- best_split$meanresid_left
         result$meanresid_right <- best_split$meanresid_right
         return(result)
@@ -194,7 +194,7 @@ TreeRegression <- setRefClass("TreeRegression",
             best_split$value <- split_value
             best_split$varID <- split_varID
             best_split$decrease <- decrease
-            if (splitrule == "Residuals"){
+            if (predleaf == "Meanresid"){
               idx <- data_values <= split_value
               best_split$meanresid_left <- mean(resid[idx])
               best_split$meanresid_right <- mean(resid[!idx])
@@ -241,7 +241,7 @@ TreeRegression <- setRefClass("TreeRegression",
             best_split$value <- split_value
             best_split$varID <- split_varID
             best_split$decrease <- decrease
-            if (splitrule == "Residuals"){
+            if (predleaf == "Meanresid"){
               best_split$meanresid_left <- mean(resid_left)
               best_split$meanresid_right <- mean(resid_right)
             }
@@ -297,7 +297,7 @@ TreeRegression <- setRefClass("TreeRegression",
     },
     
     estimate = function(nodeID) {      
-      if (splitrule == "Residuals"){
+      if (predleaf == "Meanresid"){
         if(length(mean_resid)>=nodeID){
           ## Return mean of the residuals
           return(mean_resid[[nodeID]])
@@ -311,43 +311,45 @@ TreeRegression <- setRefClass("TreeRegression",
       }
     }, 
     
-#    fit_glm = function(nodeID) {      
-#      ## Return glm
-#      #GLM can only be fitted for factor/ character predictors with more than one class in the node
-#      #test if glm includes factor/ character predictors & exclude factor/ character predictors with
-#      #only a single class in the node
-#      char_fact_ind <- which(attr(terms(data$glmdata), "dataClasses") %in% c("factor","character","ordered"))
-#      glmsubset <- data$glmsubset(sampleIDs[[nodeID]],)
-#      if (length(char_fact_ind)==0){
-#        #no characters or factors included in the formula
-#        glm <- lm(data$glmformula, glmsubset)
-#      } else{
-#        #formula includes characters or factors
-#        nunique <- sapply(glmsubset[,char_fact_ind, drop=FALSE], function(x){length(unique(x))})
-#        singleclass <- colnames(glmsubset)[char_fact_ind[which(nunique==1)]]
-#        if (length(singleclass)==0){
-#          #no need for changes, model can be fitted as usual
-#          glm <- lm(data$glmformula, glmsubset)
-#        } else{
-#          #factors/ characters with only one level must be excluded from glm
-#          #this also holds for interactions including them
-#          confounders_mod <- attr(terms(data$glmdata), "term.labels")[which(!grepl(singleclass, attr(terms(data$glmdata), "term.labels"),fixed=TRUE))]
-#          response <- as.character(attr(terms(data$glmdata), "variables"))[[2]][1]
-#          glmformula_mod <- as.formula(paste(response, paste(confounders_mod, collapse =" + "), sep=" ~ "))
-#          glm <- lm(glmformula_mod, glmsubset)
-#        }
-#      }
-#      return(glm)
-#    },
+    fit_glm = function(nodeID) {      
+      ## Return glm
+      #GLM can only be fitted for factor/ character predictors with more than one class in the node
+      #test if glm includes factor/ character predictors & exclude factor/ character predictors with
+      #only a single class in the node
+      char_fact_ind <- which(attr(terms(data$glmdata), "dataClasses") %in% c("factor","character","ordered"))
+      glmsubset <- data$glmsubset(sampleIDs[[nodeID]],)
+      if (length(char_fact_ind)==0){
+        #no characters or factors included in the formula
+        glm <- lm(data$glmformula, glmsubset)
+      } else{
+        #formula includes characters or factors
+        nunique <- sapply(glmsubset[,char_fact_ind, drop=FALSE], function(x){length(unique(x))})
+        singleclass <- colnames(glmsubset)[char_fact_ind[which(nunique==1)]]
+        if (length(singleclass)==0){
+          #no need for changes, model can be fitted as usual
+          glm <- lm(data$glmformula, glmsubset)
+        } else{
+          #factors/ characters with only one level must be excluded from glm
+          #this also holds for interactions including them
+          confounders_mod <- attr(terms(data$glmdata), "term.labels")[which(!grepl(singleclass, attr(terms(data$glmdata), "term.labels"),fixed=TRUE))]
+          response <- as.character(attr(terms(data$glmdata), "variables"))[[2]][1]
+          glmformula_mod <- as.formula(paste(response, paste(confounders_mod, collapse =" + "), sep=" ~ "))
+          glm <- lm(glmformula_mod, glmsubset)
+        }
+      }
+      return(glm)
+    },
     
     getNodePrediction = function(nodeID, predictobs) {
-      if (splitrule=="Residuals"){
-        if(length(parentglm)==1){
+      if (predleaf=="Meanresid"){
+        if(length(nodeglm)==1){
           ## no split has been performed
-          pred <- predict.lm(parentglm[[1]], newdata=predictobs) + split_values[nodeID]
+          pred <- predict.lm(nodeglm[[1]], newdata=predictobs) + split_values[nodeID]
         } else {
-          pred <- predict.lm(parentglm[[nodeID]], newdata=predictobs) + split_values[nodeID]
+          pred <- predict.lm(nodeglm[[nodeID]], newdata=predictobs) + split_values[nodeID]
         }
+      } else if (predleaf=="GLM") {
+        pred <- predict.lm(nodeglm[[nodeID]], newdata=predictobs)
       } else{
         pred <- split_values[nodeID]
       }
