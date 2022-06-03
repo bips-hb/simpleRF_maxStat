@@ -23,7 +23,12 @@ ForestRegression <- setRefClass("ForestRegression",
     
     aggregatePredictions = function(predictions) {
       ## For all samples take mean over all trees
-      return(rowMeans(predictions))
+      if (is.array(predictions)){
+        return(rowMeans(predictions))
+      } else {
+        #if only one sample
+        return(mean(predictions))
+      }
     }, 
     
     predictionError = function() {
