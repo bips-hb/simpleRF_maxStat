@@ -52,6 +52,10 @@ Forest <- setRefClass("Forest",
     
     predict = function(newdata) {
       model.data <- model.frame(formula, newdata)
+      glm.data <- model.frame(data$glmformula, newdata)
+      
+      #remove confounders from model.data if necessary
+      model.data <- model.data[,which(colnames(model.data) %in% data$names)]
 
       ## Recode factors if forest grown 'order_once' mode
       if (unordered_factors == "order_once" & length(covariate_levels) > 0) {
@@ -66,7 +70,7 @@ Forest <- setRefClass("Forest",
       }
 
       ## Save prediction data in model
-      predict_data <<- Data$new(data = model.data)
+      predict_data <<- Data$new(data = model.data, glmdata=glm.data)
       
       ## Predict in trees
       predictions <- simplify2array(lapply(trees, function(x) {
