@@ -170,15 +170,25 @@ TreeRegression <- setRefClass("TreeRegression",
     findBestSplitValueOrdered = function(split_varID, data_values, best_split, response, resid) {
       ## maxstat=TRUE
       if (maxstat) {#test to determine split point
+        
+        ## Adapt minprop to ensure that minbucket criteria met, i.e. sufficient number of
+        ## observations in daughter nodes
+        if (minbucket>1){
+          minprop_adap <- minbucket/length(data_values)
+        } else {
+          minprop_adap <- 0
+        }
+        minprop_new <- max(minprop,minprop_adap)
+        
         if (splitrule == "Variance") {
           ## Use response for splitting
           maxstat_result <- maxstat_wrapper(y = response, x = data_values, smethod = "Wilcoxon", 
-                          pmethod = pmethod, minprop = minprop, maxprop = 1-minprop)
+                          pmethod = pmethod, minprop = minprop_new, maxprop = 1-minprop_new)
           
         } else if (splitrule == "Residuals") { 
           ## Use residuals for splitting
           maxstat_result <- maxstat_wrapper(y = resid, x = data_values, smethod = "Wilcoxon", 
-                          pmethod = pmethod, minprop = minprop, maxprop = 1-minprop)
+                          pmethod = pmethod, minprop = minprop_new, maxprop = 1-minprop_new)
         } else {
           stop("Unknown splitrule.")
         } 
