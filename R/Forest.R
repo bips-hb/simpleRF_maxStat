@@ -89,10 +89,10 @@ Forest <- setRefClass("Forest",
       ## Empty virtual function
     },
     
-    variableImportance = function(type = "permutation", num_threads = 1) {
+    variableImportance = function(type="permutation", start=2, num_threads=1) {
       ## Calculate tree VIM
       vim_trees <- mclapply(trees, function(x) {
-        x$variableImportance(type)
+        x$variableImportance(type, start)
       }, mc.cores = num_threads)
       
       ## Aggregate over trees

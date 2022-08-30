@@ -237,6 +237,10 @@ Tree <- setRefClass("Tree",
       predictions <- list()
       permutations <- sample(num_samples_predict)
       
+      #if(permuted_varID==2){
+      #  message("\n Leaves:")
+      #}
+      
       ## For each sample start in root and drop down tree
       for (i in 1:num_samples_predict) {
         nodeID <- 1
@@ -276,23 +280,30 @@ Tree <- setRefClass("Tree",
         }
         
         ## Add to prediction
+        #if(permuted_varID==2){
+        #  message(paste(nodeID,", ",sep=""), appendLF = FALSE)
+        #}
         predictions[[i]] <- getNodePrediction(nodeID, data$glmsubset(oob_sampleIDs[i],))
       }
       return(simplify2array(predictions))
     }, 
     
-    variableImportance = function(type = "permutation") {
+    variableImportance = function(type = "permutation", start=2) {
       if (type == "permutation") {
         # Prediction error without any permutation
         oob_error <- predictionError()
         
         # For each variable, prediction error after permutation
-        res <- sapply(2:data$ncol, function(varID) {
+        res <- sapply(start:data$ncol, function(varID) {
           pred <- permuteAndPredictOOB(varID)
+          #if(varID==2){
+          #  message("Predictions:")
+          #  message(paste(pred,", ",sep=""))
+          #}
           oob_error_perm <- predictionError(pred)
           oob_error_perm - oob_error
         })
-        names(res) <- data$names[-1]
+        names(res) <- data$names[start:data$ncol]
         res
       } else {
         stop("Only permutation variable importance implemented.")
