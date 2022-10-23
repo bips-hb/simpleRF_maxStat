@@ -2,17 +2,8 @@
 Annika Swenne, Marvin N. Wright
 
 ### Description
-Implements random forests (RF, Breiman 2001) with emphasis on simplicity. Uses reference classes and only plain R. Not optimized for computation speed. Allows rapid prototyping of RF-type algorithms.
-
-For a runtime-optimized random forest implementation, see [ranger](https://github.com/imbs-hl/ranger).
-
-### TODO
-Features: 
-* Use a standard `predict()` function
-* ...
-
-Technical stuff:
-* Software tests
-* Profile the code. Possible to make it faster without losing simplicity?
+Implements the "Residual variance splitting" and the "Maximally selected residual rank statistic" splitting rules for random forests that are based on the 
+    residuals from local linear models. Furthermore, it provides the possibility to fit different models in the leaves of the random forest trees. The package uses  
+    reference classes and only plain R and is not optimized for computation speed. 
 
 Be careful, this package is not extensively tested!
