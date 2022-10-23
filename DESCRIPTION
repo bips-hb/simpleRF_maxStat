@@ -3,7 +3,7 @@ Type: Package
 Title: Random forests with splitting rules based on the residuals from local linear models
 Version: 1.0.0
 Date: 2022-10-24
-Author: Annika Swenne
+Author: Annika Swenne, Marvin N. Wright
 Maintainer: Annika Swenne
 Description: This package implements the "Residual variance splitting" and the "Maximally selected residual rank statistic splitting rule" 
     that have been described in my master thesis. The package uses reference classes and only plain R and is not optimized for
