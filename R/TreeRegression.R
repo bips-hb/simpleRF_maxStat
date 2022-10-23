@@ -34,6 +34,9 @@ TreeRegression <- setRefClass("TreeRegression",
       }
       best_split$varID <- -1
       best_split$value <- -1
+      best_split$meanresid_left <- NULL
+      best_split$meanresid_right <- NULL
+      glm <- NULL
       #to perform the Benjamini-Hochberg adjustment a list of all p-values is required
       best_split$pvalues <- cbind(possible_split_varIDs,numeric(length(possible_split_varIDs)))
       
@@ -50,22 +53,30 @@ TreeRegression <- setRefClass("TreeRegression",
         glmsubset <- data$glmsubset(sampleIDs[[nodeID]],)
         if (length(char_fact_ind)==0){
           #no characters or factors included in the formula
-          resid <- lm(data$glmformula, glmsubset)$residuals
+          glm <- lm(data$glmformula, glmsubset)
+          resid <- glm$residuals
         } else{
           #formula includes characters or factors
           nunique <- sapply(glmsubset[,char_fact_ind, drop=FALSE], function(x){length(unique(x))})
           singleclass <- colnames(glmsubset)[char_fact_ind[which(nunique==1)]]
           if (length(singleclass)==0){
             #no need for changes, model can be fitted as usual
-            resid <- lm(data$glmformula, glmsubset)$residuals
+            glm <- lm(data$glmformula, glmsubset)
+            resid <- glm$residuals
           } else{
             #factors/ characters with only one level must be excluded from glm
             #this also holds for interactions including them
             confounders_mod <- attr(terms(data$glmdata), "term.labels")[which(!grepl(singleclass, attr(terms(data$glmdata), "term.labels"),fixed=TRUE))]
             response <- as.character(attr(terms(data$glmdata), "variables"))[[2]][1]
             glmformula_mod <- as.formula(paste(response, paste(confounders_mod, collapse =" + "), sep=" ~ "))
-            resid <- lm(glmformula_mod, glmsubset)$residuals
+            glm <- lm(glmformula_mod, glmsubset)
+            resid <- glm$residuals
           }
+        }
+        if(predleaf=="Meanresid" & nodeID==1){
+          #for the first node no glm from parent nodes is available and thus the glm from
+          #the node itself is saved
+          nodeglm[[nodeID]] <<- glm
         }
       }
       
@@ -138,6 +149,9 @@ TreeRegression <- setRefClass("TreeRegression",
           result <- NULL
           result$varID <- as.integer(best_split$varID)
           result$value <- best_split$value
+          result$nodeglm <- glm
+          result$meanresid_left <- best_split$meanresid_left
+          result$meanresid_right <- best_split$meanresid_right
           return(result)
         }
         
@@ -146,6 +160,9 @@ TreeRegression <- setRefClass("TreeRegression",
         result <- NULL
         result$varID <- as.integer(best_split$varID)
         result$value <- best_split$value
+        result$nodeglm <- glm
+        result$meanresid_left <- best_split$meanresid_left
+        result$meanresid_right <- best_split$meanresid_right
         return(result)
       }      
     }, 
@@ -153,15 +170,25 @@ TreeRegression <- setRefClass("TreeRegression",
     findBestSplitValueOrdered = function(split_varID, data_values, best_split, response, resid) {
       ## maxstat=TRUE
       if (maxstat) {#test to determine split point
+        
+        ## Adapt minprop to ensure that minbucket criteria met, i.e. sufficient number of
+        ## observations in daughter nodes
+        if (minbucket>1){
+          minprop_adap <- minbucket/length(data_values)
+        } else {
+          minprop_adap <- 0
+        }
+        minprop_new <- max(minprop,minprop_adap)
+        
         if (splitrule == "Variance") {
           ## Use response for splitting
           maxstat_result <- maxstat_wrapper(y = response, x = data_values, smethod = "Wilcoxon", 
-                          pmethod = pmethod, minprop = minprop, maxprop = 1-minprop)
+                          pmethod = pmethod, minprop = minprop_new, maxprop = 1-minprop_new)
           
         } else if (splitrule == "Residuals") { 
           ## Use residuals for splitting
           maxstat_result <- maxstat_wrapper(y = resid, x = data_values, smethod = "Wilcoxon", 
-                          pmethod = pmethod, minprop = minprop, maxprop = 1-minprop)
+                          pmethod = pmethod, minprop = minprop_new, maxprop = 1-minprop_new)
         } else {
           stop("Unknown splitrule.")
         } 
@@ -177,6 +204,11 @@ TreeRegression <- setRefClass("TreeRegression",
             best_split$value <- split_value
             best_split$varID <- split_varID
             best_split$decrease <- decrease
+            if (predleaf == "Meanresid"){
+              idx <- data_values <= split_value
+              best_split$meanresid_left <- mean(resid[idx])
+              best_split$meanresid_right <- mean(resid[!idx])
+            }
           }
         } else {
           best_split$pvalues[which(best_split$pvalues[,1]==split_varID),2] <- NA
@@ -219,6 +251,10 @@ TreeRegression <- setRefClass("TreeRegression",
             best_split$value <- split_value
             best_split$varID <- split_varID
             best_split$decrease <- decrease
+            if (predleaf == "Meanresid"){
+              best_split$meanresid_left <- mean(resid_left)
+              best_split$meanresid_right <- mean(resid_right)
+            }
           }
         }
         return(best_split)
@@ -271,8 +307,18 @@ TreeRegression <- setRefClass("TreeRegression",
     },
     
     estimate = function(nodeID) {      
-      ## Return mean response
-      return(mean(data$subset(sampleIDs[[nodeID]], 1)))
+      if (predleaf == "Meanresid"){
+        if(length(mean_resid)>=nodeID){
+          ## Return mean of the residuals
+          return(mean_resid[[nodeID]])
+        } else {
+          ## Return 0 if no split has been performed
+          return(0)
+        }
+      } else {
+        ## Return mean response
+        return(mean(data$subset(sampleIDs[[nodeID]], 1)))
+      }
     }, 
     
     fit_glm = function(nodeID) {      
@@ -305,8 +351,15 @@ TreeRegression <- setRefClass("TreeRegression",
     },
     
     getNodePrediction = function(nodeID, predictobs) {
-      if (glmleaf){
-        pred <- predict.lm(leaf_glm[[nodeID]], newdata=predictobs)
+      if (predleaf=="Meanresid"){
+        if(length(nodeglm)==1){
+          ## no split has been performed
+          pred <- predict.lm(nodeglm[[1]], newdata=predictobs) + split_values[nodeID]
+        } else {
+          pred <- predict.lm(nodeglm[[nodeID]], newdata=predictobs) + split_values[nodeID]
+        }
+      } else if (predleaf=="GLM") {
+        pred <- predict.lm(nodeglm[[nodeID]], newdata=predictobs)
       } else{
         pred <- split_values[nodeID]
       }

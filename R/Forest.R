@@ -18,7 +18,7 @@ Forest <- setRefClass("Forest",
     trees = "list",
     treetype = "character",
     replace = "logical", 
-    glmleaf = "logical",
+    predleaf = "character",
     maxstat = "logical",
     minprop = "numeric",
     alpha = "numeric",
@@ -36,7 +36,7 @@ Forest <- setRefClass("Forest",
         x$splitrule <- splitrule
         x$unordered_factors <- unordered_factors
         x$data <- data
-        x$glmleaf <- glmleaf
+        x$predleaf <- predleaf
         x$maxstat <- maxstat
         x$minprop <- minprop
         x$alpha <- alpha
@@ -52,6 +52,10 @@ Forest <- setRefClass("Forest",
     
     predict = function(newdata) {
       model.data <- model.frame(formula, newdata)
+      glm.data <- model.frame(data$glmformula, newdata)
+      
+      #remove confounders from model.data if necessary
+      model.data <- model.data[,which(colnames(model.data) %in% data$names)]
 
       ## Recode factors if forest grown 'order_once' mode
       if (unordered_factors == "order_once" & length(covariate_levels) > 0) {
@@ -66,7 +70,7 @@ Forest <- setRefClass("Forest",
       }
 
       ## Save prediction data in model
-      predict_data <<- Data$new(data = model.data)
+      predict_data <<- Data$new(data = model.data, glmdata=glm.data)
       
       ## Predict in trees
       predictions <- simplify2array(lapply(trees, function(x) {
@@ -85,10 +89,10 @@ Forest <- setRefClass("Forest",
       ## Empty virtual function
     },
     
-    variableImportance = function(type = "permutation", num_threads = 1) {
+    variableImportance = function(type="permutation", start=2, num_threads=1) {
       ## Calculate tree VIM
       vim_trees <- mclapply(trees, function(x) {
-        x$variableImportance(type)
+        x$variableImportance(type, start)
       }, mc.cores = num_threads)
       
       ## Aggregate over trees
@@ -112,7 +116,7 @@ Forest <- setRefClass("Forest",
       cat("Minprop:                            ", minprop, "\n")
       cat("Alpha:                              ", alpha, "\n")
       cat("Replace                             ", replace, "\n")
-      cat("Model in terminal nodes             ", glmleaf, "\n")
+      cat("Predictions in leaves               ", predleaf, "\n")
       cat("Unordered factor handling           ", unordered_factors, "\n")
       cat("OOB prediction error:               ", predictionError(), "\n")
     }, 

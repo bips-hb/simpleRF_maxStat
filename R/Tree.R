@@ -16,8 +16,9 @@ Tree <- setRefClass("Tree",
     split_varIDs = "integer",    
     split_values = "numeric", 
     split_levels_left = "list",
-    glmleaf = "logical",
-    leaf_glm = "list",
+    predleaf = "character",
+    nodeglm = "list",
+    mean_resid = "list",
     maxstat = "logical",
     minprop = "numeric",
     alpha = "numeric",
@@ -48,13 +49,12 @@ Tree <- setRefClass("Tree",
       
       ## Split node
       split <- splitNodeInternal(nodeID, possible_split_varIDs)
-      
       if (!is.null(split)) {
         ## Assign split
         split_varIDs[[nodeID]] <<- split$varID
         split_values[[nodeID]] <<- split$value
-        if (glmleaf){
-          leaf_glm[[nodeID]] <<- NA
+        if (predleaf == "GLM"){
+          nodeglm[[nodeID]] <<- NA
         }
       
         ## Create child nodes
@@ -62,6 +62,14 @@ Tree <- setRefClass("Tree",
         right_child <- length(sampleIDs) + 2
         child_nodeIDs[[nodeID]] <<- c(left_child, right_child)
         
+        ## Assign mean residuals & parentglm to child node
+        if (predleaf == "Meanresid"){
+          mean_resid[[left_child]] <<- split$meanresid_left
+          mean_resid[[right_child]] <<- split$meanresid_right
+          nodeglm[[left_child]] <<- split$nodeglm
+          nodeglm[[right_child]] <<- split$nodeglm
+        }
+ 
         ## For each sample in node, assign to left or right child
         if (length(split_levels_left[[nodeID]]) == 0) {
           ## Ordered splitting
@@ -78,14 +86,13 @@ Tree <- setRefClass("Tree",
         splitNode(right_child)
       } else {
         ## Compute estimate for terminal node or fit lm
-        if (glmleaf){
-          leaf_glm[[nodeID]] <<- fit_glm(nodeID) 
+        if (predleaf == "GLM") {
+          nodeglm[[nodeID]] <<- fit_glm(nodeID)
           split_values[[nodeID]] <<- NA
-          split_varIDs[[nodeID]] <<- NA
         } else {
           split_values[[nodeID]] <<- estimate(nodeID)
-          split_varIDs[[nodeID]] <<- NA
         }
+        split_varIDs[[nodeID]] <<- NA
       }
     },
     
@@ -230,6 +237,10 @@ Tree <- setRefClass("Tree",
       predictions <- list()
       permutations <- sample(num_samples_predict)
       
+      #if(permuted_varID==2){
+      #  message("\n Leaves:")
+      #}
+      
       ## For each sample start in root and drop down tree
       for (i in 1:num_samples_predict) {
         nodeID <- 1
@@ -269,23 +280,30 @@ Tree <- setRefClass("Tree",
         }
         
         ## Add to prediction
+        #if(permuted_varID==2){
+        #  message(paste(nodeID,", ",sep=""), appendLF = FALSE)
+        #}
         predictions[[i]] <- getNodePrediction(nodeID, data$glmsubset(oob_sampleIDs[i],))
       }
       return(simplify2array(predictions))
     }, 
     
-    variableImportance = function(type = "permutation") {
+    variableImportance = function(type = "permutation", start=2) {
       if (type == "permutation") {
         # Prediction error without any permutation
         oob_error <- predictionError()
         
         # For each variable, prediction error after permutation
-        res <- sapply(2:data$ncol, function(varID) {
+        res <- sapply(start:data$ncol, function(varID) {
           pred <- permuteAndPredictOOB(varID)
+          #if(varID==2){
+          #  message("Predictions:")
+          #  message(paste(pred,", ",sep=""))
+          #}
           oob_error_perm <- predictionError(pred)
           oob_error_perm - oob_error
         })
-        names(res) <- data$names[-1]
+        names(res) <- data$names[start:data$ncol]
         res
       } else {
         stop("Only permutation variable importance implemented.")
