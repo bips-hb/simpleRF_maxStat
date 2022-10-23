@@ -9,5 +9,5 @@ Implements the "Residual variance splitting" and the "Maximally selected residua
 
 Be careful, this package is not extensively tested!
 
-#### Analysis
+#### Folder: Analysis
 This folder includes the R scripts that were used to analyze the simulated and real-world data in my thesis.
