@@ -1,12 +1,18 @@
-Package: simpleRF
+Package: simpleRF_maxStat
 Type: Package
-Title: Random Forests with emphasis on simplicity
-Version: 0.1.5
-Date: 2022-03-07
-Author: Marvin N. Wright
-Maintainer: Marvin N. Wright <marv@wrig.de>
-Description: Uses reference classes and only plain R. Not optimized for
-    computation speed. Allows rapid prototyping of RF-type algorithms.
+Title: Random forests with splitting rules based on the residuals from local linear models
+Version: 1.0.0
+Date: 2022-10-24
+Author: Annika Swenne
+Maintainer: Annika Swenne
+Description: This package implements the "Residual variance splitting" and the "Maximally selected residual rank statistic splitting rule" 
+    that have been described in my master thesis. The package uses reference classes and only plain R and is not optimized for
+    computation speed. It is based on the package simpleRF (Wright 2022). The implementation of the maximally selected rank statistic was taken from maxstatRF
+    (Wright, Dankowski, and Ziegler 2017).
+References: 
+    Wright, M. N. (2022). simpleRF: random forests with emphasis on simplicity. R package. url: https://github.com/mnwright/simpleRF.
+    Wright, M. N., T. Dankowski, and A. Ziegler (2017). “Unbiased split variable selection for random survival forests using maximally 
+    selected rank statistics”. In: Statistics in Medicine 36.8, pp. 1272–1284. doi: 10.1002/sim.7212.
 License: GPL-3
 Imports:
     methods,
