@@ -8,6 +8,7 @@ Tree <- setRefClass("Tree",
     minsplit = "integer",
     minbucket = "integer",
     splitrule = "character",
+    always_split_varIDs = "integer",
     unordered_factors = "character",
     data = "Data", 
     sampleIDs = "list",    
@@ -45,7 +46,9 @@ Tree <- setRefClass("Tree",
     
     splitNode = function(nodeID) {
       ## Sample possible split variables
-      possible_split_varIDs <- sample(data$ncol-1, mtry, replace = FALSE) + 1
+      sampling_IDs <- seq(data$ncol)[-c(1, always_split_varIDs)]
+      possible_split_varIDs <- sample(sampling_IDs, mtry, replace = FALSE)
+      possible_split_varIDs <- c(always_split_varIDs, possible_split_varIDs)
       
       ## Split node
       split <- splitNodeInternal(nodeID, possible_split_varIDs)

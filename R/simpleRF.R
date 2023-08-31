@@ -18,6 +18,7 @@
 ##' @param replace Sample with replacement. Default TRUE.
 ##' @param probability Grow a probability forest. Default FALSE.
 ##' @param splitrule Splitrule to use in trees. Default "Gini" for classification and probability forests, "Variance" for regression forests and "Logrank" for survival forests.
+##' @param always_split_variables Character vector with variable names to be always selected in addition to the mtry variables tried for splitting. 
 ##' @param unordered_factors How to handle unordered factor variables. One of "ignore", "order_once", "order_split" and "partition" with default "ignore".
 ##' @param leafpred Prediction in the leaves. Default "Meanresid" for splitrule="Residuals" & "Meanout" for splitrule="Variance".
 ##' @param maxstat Use maximally selected statistics for splitting. Default FALSE.
@@ -48,9 +49,9 @@
 ##' @export
 simpleRF <- function(formula, data, num_trees = 50, mtry = NULL, 
                      minsplit = NULL, minbucket = 1, replace = TRUE, probability = FALSE, 
-                     splitrule = NULL, unordered_factors = "ignore", predleaf = NULL, 
-                     maxstat = FALSE, minprop =  0.1, alpha=0.05, pmethod = "approximation", 
-                     num_threads = 1) {
+                     splitrule = NULL, always_split_variables = NULL, unordered_factors = "ignore", 
+                     predleaf = NULL, maxstat = FALSE, minprop =  0.1, alpha=0.05, 
+                     pmethod = "approximation", num_threads = 1) {
   
   #distinguish between RF with and without confounders
   if (grepl("|", deparse1(formula), fixed = TRUE)){
@@ -81,6 +82,8 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
     glm.data <- model.frame(glmformula, data)
   }
   
+  always_split_varIDs <- which(colnames(model.data) %in% always_split_variables)
+  
   if (class(model.data[, 1]) == "factor") {
     if (probability) {
       treetype <- "Probability" 
@@ -97,9 +100,9 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
   
   ## Check parameters
   if (is.null(mtry)) {
-    mtry <- sqrt(ncol(model.data)-1)
-  } else if (mtry > ncol(model.data)-1) {
-    stop("Mtry cannot be larger than number of independent variables.")
+    mtry <- sqrt(ncol(model.data)-length(always_split_variables)-1)
+  } else if (mtry + length(always_split_variables) > ncol(model.data)-1) {
+    stop("Mtry plus the number of always_split_variables cannot be larger than number of independent variables.")
   }
   if (is.null(minsplit)) {
     if (treetype == "Classification") {
@@ -186,7 +189,8 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                                        minsplit = as.integer(minsplit), minbucket = as.integer(minbucket),
                                        replace = replace, splitrule = splitrule, predleaf=predleaf,
                                        data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
-                                       formula = splitformula, unordered_factors = unordered_factors, 
+                                       formula = splitformula, always_split_varIDs = always_split_varIDs,
+                                       unordered_factors = unordered_factors, 
                                        covariate_levels = covariate_levels,
                                        response_levels = levels(model.data[, 1]),
                                        maxstat = maxstat, minprop = minprop, alpha = alpha, pmethod = pmethod)
@@ -195,7 +199,8 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                                     minsplit = as.integer(minsplit), minbucket = as.integer(minbucket),
                                    replace = replace, splitrule = splitrule, predleaf=predleaf,
                                    data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
-                                   formula = splitformula, unordered_factors = unordered_factors,
+                                   formula = splitformula, always_split_varIDs = always_split_varIDs,
+                                   unordered_factors = unordered_factors,
                                    covariate_levels = covariate_levels,
                                    response_levels = levels(model.data[, 1]),
                                    maxstat = maxstat, minprop = minprop, alpha = alpha, pmethod = pmethod)
@@ -204,7 +209,8 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                                    minsplit = as.integer(minsplit), minbucket = as.integer(minbucket),
                                    replace = replace, splitrule = splitrule, predleaf=predleaf,
                                    data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
-                                   formula = splitformula, unordered_factors = unordered_factors, 
+                                   formula = splitformula, always_split_varIDs = always_split_varIDs,
+                                   unordered_factors = unordered_factors, 
                                    covariate_levels = covariate_levels,
                                    maxstat = maxstat, minprop = minprop, alpha = alpha, pmethod = pmethod)
   } else if (treetype == "Survival") {
@@ -214,7 +220,8 @@ simpleRF <- function(formula, data, num_trees = 50, mtry = NULL,
                                  minsplit = as.integer(minsplit), minbucket = as.integer(minbucket),
                                  replace = replace, splitrule = splitrule, predleaf=predleaf,
                                  data = Data$new(data = model.data, glmdata=glm.data, glmformula=glmformula), 
-                                 formula = splitformula, unordered_factors = unordered_factors, 
+                                 formula = splitformula, always_split_varIDs = always_split_varIDs,
+                                 unordered_factors = unordered_factors, 
                                  covariate_levels = covariate_levels,
                                  timepoints = timepoints,
                                  maxstat = maxstat, minprop = minprop, alpha = alpha, pmethod = pmethod)

@@ -11,6 +11,7 @@ Forest <- setRefClass("Forest",
     minsplit = "integer", 
     minbucket = "integer",
     splitrule = "character",
+    always_split_varIDs = "integer",
     unordered_factors = "character",
     data = "Data",
     predict_data = "Data",
@@ -34,6 +35,7 @@ Forest <- setRefClass("Forest",
         x$minsplit <- minsplit
         x$minbucket <- minbucket
         x$splitrule <- splitrule
+        x$always_split_varIDs <- always_split_varIDs
         x$unordered_factors <- unordered_factors
         x$data <- data
         x$predleaf <- predleaf
@@ -115,9 +117,10 @@ Forest <- setRefClass("Forest",
       cat("Minimal terminal node size:         ", minbucket, "\n")
       cat("Minprop:                            ", minprop, "\n")
       cat("Alpha:                              ", alpha, "\n")
-      cat("Replace                             ", replace, "\n")
-      cat("Predictions in leaves               ", predleaf, "\n")
-      cat("Unordered factor handling           ", unordered_factors, "\n")
+      cat("Replace:                            ", replace, "\n")
+      cat("Predictions in leaves:              ", predleaf, "\n")
+      cat("Always split variables (IDs):       ", always_split_varIDs, "\n")
+      cat("Unordered factor handling:          ", unordered_factors, "\n")
       cat("OOB prediction error:               ", predictionError(), "\n")
     }, 
     
